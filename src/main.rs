@@ -1,17 +1,25 @@
 
 mod game {
     pub mod connect_game;
-}
-
-mod bits {
-    pub mod bits;
+    pub mod bits {
+        pub mod bit;
+    }
 }
 
 use game::connect_game::*;
-use bits::bits::*;
+use game::bits::bit::*;
 
 fn main() {
     let mut g = Game::build_game();
     g.make_move(1);
-    print_i(g.light);
+    g.make_move(8);
+    g.make_move(5);
+    print_i(0x1FC_0000_0000);
+
+    let x: Vec<i32> = g.get_moves();
+
+    for i in x {
+        print!("{}, ", i);
+    }
+
 }
