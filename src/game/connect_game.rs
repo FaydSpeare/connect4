@@ -1,4 +1,4 @@
-
+use rand::Rng;
 use super::bits::bit::*;
 
 const MASK: u64 = 0x1FC_0000_0000;
@@ -53,5 +53,25 @@ impl Game {
         return moves;
     }
 
+    pub fn simulate_to_end(&mut self) {
 
+        let mut moves: Vec<i32> = self.get_moves();
+
+        while ((self.light|self.dark) & MASK).count_ones() != 7 {
+
+
+            let r_i = rand::thread_rng().gen_range(0, moves.len());
+
+            let r_move = moves[r_i];
+            moves[r_i] = moves[moves.len()-1];
+            moves.pop();
+
+            if r_move + 7 < 42 {
+                moves.push(r_move+7);
+            }
+
+            self.make_move(r_move);
+
+        }
+    }
 }
