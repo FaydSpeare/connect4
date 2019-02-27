@@ -144,6 +144,7 @@ impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = String::new();
 
+        s.push_str("------------------------------");
         s.push_str("\n            ");
         s.push_str(" _______________\n");
         for i in vec![5, 4, 3, 2, 1, 0] {
@@ -192,9 +193,10 @@ impl fmt::Display for Game {
             s.push('\n');
         }
         s.push_str("            ");
-        s.push_str("~~~~~~~~~~~~~~~~~");
+        s.push_str("\\_______________/");
         s.push_str("\n            ");
         s.push_str(" ||           || \n");
+        s.push_str("------------------------------");
 
         write!(f, "{}", s)
     }
