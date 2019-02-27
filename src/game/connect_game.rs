@@ -28,18 +28,19 @@ impl Game {
 
         match self.history.pop(){
             Some(last_move) => {
-                if !is_set((self.light|self.dark), last_move){
+                if !is_set(self.light|self.dark, last_move){
                     println!("DEBUG: cannot undo move - last_move was not made");
-                }
-                self.turn = !self.turn;
-                if self.turn {
-                    self.light ^= 1 << last_move;
                 } else {
-                    self.dark ^= 1 << last_move;
-                }
-                self.moves.retain(|&e| e != last_move);
-                if last_move > 6 {
-                    self.moves.push(last_move - 7);
+                    self.turn = !self.turn;
+                    if self.turn {
+                        self.light ^= 1 << last_move;
+                    } else {
+                        self.dark ^= 1 << last_move;
+                    }
+                    self.moves.retain(|&e| e != last_move);
+                    if last_move > 6 {
+                        self.moves.push(last_move - 7);
+                    }
                 }
             },
             None => println!("DEBUG: cannot undo move - board is empty")
@@ -54,23 +55,26 @@ impl Game {
         if !self.moves.contains(&pos) {
             println!("DEBUG: cannot make move - move not in moves");
         }
-        if is_set(self.light | self.dark, pos) {
+        else if is_set(self.light | self.dark, pos) {
             println!("DEBUG: cannot make move - spot already taken");
         }
-        if self.turn {
-            self.light |= 1 << pos;
-        } else {
-            self.dark |= 1 << pos;
+        else {
+
+            if self.turn {
+                self.light |= 1 << pos;
+            } else {
+                self.dark |= 1 << pos;
+            }
+
+            self.turn = !self.turn;
+
+            self.moves.retain(|&e| e != pos);
+            if pos < 35 {
+                self.moves.push(pos + 7);
+            }
+            self.history.push(pos);
         }
-        self.turn = !self.turn;
 
-        self.moves.retain(|&e| e != pos);
-        if pos < 35 {
-            self.moves.push(pos + 7);
-        }
-
-
-        self.history.push(pos);
     }
 
     pub fn get_moves(&self) -> Vec<i32> {

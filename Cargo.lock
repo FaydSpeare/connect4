@@ -1,5 +1,5 @@
 [[package]]
-name = "Connect4"
+name = "connect_4"
 version = "0.1.0"
 dependencies = [
  "rand 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
