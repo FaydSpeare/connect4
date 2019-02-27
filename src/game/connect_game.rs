@@ -48,22 +48,8 @@ impl Game {
     }
 
     pub fn simulate_to_end(&mut self) {
-
-        let mut moves: Vec<i32> = self.get_moves();
-
         while ( (self.light|self.dark) & MASK).count_ones() != 7 {
-
-            let r_i = rand::thread_rng().gen_range(0, moves.len());
-
-            let r_move = moves[r_i];
-            moves.swap_remove(r_i);
-
-            if r_move + 7 < 42 {
-                moves.push(r_move+7);
-            }
-
-            self.make_move(r_move);
-
+            self.make_rand_move();
         }
     }
 
@@ -103,6 +89,22 @@ impl Game {
             self.history.push(pos);
         }
 
+    }
+
+    pub fn make_rand_move(&mut self){
+        let r_i = rand::thread_rng().gen_range(0, self.moves.len());
+        let pos = self.moves[r_i];
+
+        let n = 1 << pos;
+        match self.turn {
+            true => self.light |= n,
+            false => self.dark |= n
+        }
+        self.turn = !self.turn;
+
+        self.moves.swap_remove(r_i);
+        if pos < 35 { self.moves.push(pos + 7); }
+        self.history.push(pos);
     }
 
     pub fn sudo_undo_move(&mut self, pos: i32){
