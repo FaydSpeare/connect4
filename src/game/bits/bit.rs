@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 
 pub fn print_i(i: u64){
     println!("0b{:b}", i);
