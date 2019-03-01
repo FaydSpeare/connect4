@@ -4,9 +4,16 @@ mod game {
     pub mod bits {
         pub mod bit;
     }
+    pub mod generation {
+        pub mod generator;
+    }
 }
 
+
 use game::connect_game::*;
+
+#[allow(unused_imports)]
+use game::generation::*;
 
 use std::time::Instant;
 
@@ -16,18 +23,21 @@ fn main() {
     let start = Instant::now();
 
     let mut g;
-    for _i in 0..100000 {
+    for _i in 0..400000 {
         g = Game::build_game();
         g.simulate_to_end();
+        //println!("{}", g);
     }
 
 
+    /*
     g = Game::build_game();
     g.make_move(0);
 
     for _j in 0..20 {g.make_rand_move();}
 
     println!("{}", g);
+    */
 
     let elapsed = start.elapsed();
 
@@ -36,3 +46,8 @@ fn main() {
 
 
 }
+
+
+
+
+

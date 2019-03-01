@@ -1,5 +1,6 @@
 use rand::Rng;
 use super::bits::bit::*;
+use super::generation::generator::WINS;
 use std::fmt;
 
 const MASK: u64 = 0x1FC_0000_0000;
@@ -48,7 +49,7 @@ impl Game {
     }
 
     pub fn simulate_to_end(&mut self) {
-        while ( (self.light|self.dark) & MASK).count_ones() != 7 {
+        while self.get_result() == None {
             self.make_rand_move();
         }
     }
@@ -139,6 +140,22 @@ impl Game {
         }
     }
 
+    pub fn get_result(&self) -> Option<(i32, u64)> {
+
+        for &long in WINS.iter() {
+            if self.light & long == long {
+                return Some((1, long));
+            }
+            else if self.dark & long == long {
+                return Some((-1, long));
+            }
+        }
+        if (self.light | self.dark) & MASK == MASK {
+            return Some((0,0));
+        }
+        return None;
+    }
+
 }
 
 impl fmt::Display for Game {
@@ -204,3 +221,4 @@ impl fmt::Display for Game {
     }
 
 }
+
