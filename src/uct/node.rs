@@ -59,7 +59,7 @@ impl Tree {
         }
     }
 
-    pub fn select_child(&self, id: usize) -> &Node {
+    pub fn select_child(&self, id: usize) -> usize {
 
         let mut best_uct = self.nodes[self.nodes[id].children[0]].uct(self.nodes[id].visits);
         let mut best_child = &self.nodes[self.nodes[id].children[0]];
@@ -84,7 +84,7 @@ impl Tree {
                 }
             }
         }
-        return best_child;
+        return best_child.this.unwrap();
     }
 
     pub fn make_move(&mut self, id: usize) -> Node {
@@ -122,33 +122,33 @@ impl Tree {
         let root_this = root.this.unwrap();
         self.nodes.push(root);
 
-        for _i in 0..8 {
-            let node = &self.nodes[0];
-
+        for _i in 0..14 {
+            let mut id = 0;
             let mut depth = 0;
-            while node.is_not_expandable() {
-                let node = self.select_child(node.this.unwrap());
+
+            while self.nodes[id].is_not_expandable() {
+                id = self.select_child(self.nodes[id].this.unwrap());
                 depth += 1;
-                if node.is_terminal() {
+                if self.nodes[id].is_terminal() {
                     break;
                 }
                 println!("hi");
             }
 
-            if node.this.unwrap() == root_this {
-                if node.is_terminal() {
-                    self.update(node.terminal_value, node.this.unwrap());
+            if self.nodes[id].this.unwrap() == root_this {
+                if self.nodes[id].is_terminal() {
+                    let i = self.nodes[id].this.unwrap();
+                    self.update(self.nodes[id].terminal_value, i);
                 }
             }
 
-            let expanded = self.make_move(node.this.unwrap());
-
-            let exp = expanded.this.unwrap();
+            let expanded = self.make_move(self.nodes[id].this.unwrap());
             self.nodes.push(expanded);
-            let expanded = &self.nodes[exp];
+
+            let e_id = self.nodes.len()-1;
 
 
-            println!("node {}", expanded.last_move);
+            println!("node {}", self.nodes[e_id].last_move);
         }
     }
 
