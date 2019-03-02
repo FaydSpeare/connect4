@@ -24,6 +24,7 @@ use game::generation::*;
 use std::time::Instant;
 
 
+
 fn main() {
 
     let start = Instant::now();

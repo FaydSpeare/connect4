@@ -112,7 +112,48 @@ impl Tree {
         creation
     }
 
+    pub fn push(&mut self){
+        println!("ok");
+    }
+
+    pub fn run(&mut self){
+
+        let mut root = Node::new(vec![0,1,2,3,4,5,6], true);
+        let root_this = root.this.unwrap();
+        self.nodes.push(root);
+
+        for _i in 0..8 {
+            let node = &self.nodes[0];
+
+            let mut depth = 0;
+            while node.is_not_expandable() {
+                let node = self.select_child(node.this.unwrap());
+                depth += 1;
+                if node.is_terminal() {
+                    break;
+                }
+                println!("hi");
+            }
+
+            if node.this.unwrap() == root_this {
+                if node.is_terminal() {
+                    self.update(node.terminal_value, node.this.unwrap());
+                }
+            }
+
+            let expanded = self.make_move(node.this.unwrap());
+
+            let exp = expanded.this.unwrap();
+            self.nodes.push(expanded);
+            let expanded = &self.nodes[exp];
+
+
+            println!("node {}", expanded.last_move);
+        }
+    }
+
 }
+
 
 pub struct Node {
 
@@ -207,21 +248,34 @@ impl Node {
     }
 }
 
+pub fn uct(){
+    Tree::new().run();
+}
 
+
+
+/*
 pub fn uct(){
 
-    let mut tree = Tree::new();
+    let tree = Rc::new(RefCell::new(Tree::new()));
+
     let mut root = Node::new(vec![0,1,2,3,4,5,6], true);
     let root_this = root.this.unwrap();
-    tree.nodes.push(root);
 
-    for _i in 0..7 {
+    {
+        (*tree).borrow_mut().nodes.push(root);
+    }
 
-        let node = &tree.nodes[0];
+    for _i in 0..1 {
+
+        let t = Rc::clone(&tree);
+        let t2 = t.borrow_mut();
+        let node = &tree.borrow().nodes[0];
 
         let mut depth = 0;
+        let t = tree.borrow();
         while node.is_not_expandable() {
-            let node = tree.select_child(node.this.unwrap());
+            let node = t.select_child(node.this.unwrap());
             depth += 1;
             if node.is_terminal() {
                 break;
@@ -231,21 +285,22 @@ pub fn uct(){
 
         if node.this.unwrap() == root_this {
             if node.is_terminal() {
-                tree.update(node.terminal_value, node.this.unwrap());
+                //tree.borrow_mut().update(node.terminal_value, node.this.unwrap());
             }
         }
 
 
 
-        let expanded = tree.make_move(node.this.unwrap());
+        //let expanded = tree.borrow_mut().make_move(node.this.unwrap());
+
+        /*
         let exp = expanded.this.unwrap();
         tree.nodes.push(expanded);
         let expanded = &tree.nodes[exp];
 
 
         println!("node {}", expanded.last_move);
-
+        */
 
     }
-
-}
+*/
