@@ -2,6 +2,8 @@ use rand::Rng;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use super::super::game::connect_game::*;
+
 pub struct Tree {
     pub nodes: Vec<Node>
 }
@@ -112,10 +114,6 @@ impl Tree {
         creation
     }
 
-    pub fn push(&mut self){
-        println!("ok");
-    }
-
     pub fn run(&mut self){
 
         let mut root = Node::new(vec![0,1,2,3,4,5,6], true);
@@ -123,16 +121,18 @@ impl Tree {
         self.nodes.push(root);
 
         for _i in 0..14 {
+            let mut g = Game::build_game();
             let mut id = 0;
             let mut depth = 0;
 
             while self.nodes[id].is_not_expandable() {
                 id = self.select_child(self.nodes[id].this.unwrap());
+                g.make_move(self.nodes[id].last_move);
                 depth += 1;
                 if self.nodes[id].is_terminal() {
                     break;
                 }
-                println!("hi");
+                println!("depth: {} - id: {}", depth, id);
             }
 
             if self.nodes[id].this.unwrap() == root_this {
@@ -146,9 +146,22 @@ impl Tree {
             self.nodes.push(expanded);
 
             let e_id = self.nodes.len()-1;
+            g.make_move(self.nodes[e_id].last_move);
 
+            println!("{}", g);
+            println!("node {}", self.nodes[e_id].this.unwrap());
 
-            println!("node {}", self.nodes[e_id].last_move);
+            let result = g.get_result();
+
+            match result {
+                Some((a, b)) => {
+                    self.nodes[e_id].set_terminal(true);
+                    self.set_terminal_value(a, 1, e_id);
+                }
+                None => {
+                    g.simulate_to_end();
+                }
+            }
         }
     }
 

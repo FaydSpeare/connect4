@@ -73,6 +73,7 @@ impl Game {
         }
         else if !self.moves.contains(&pos) {
             println!("DEBUG: cannot make move - move not in moves");
+            println!("DEBUG: move: {} - moves: {:?}", pos, self.moves);
         }
         else if is_set(self.light | self.dark, pos) {
             println!("DEBUG: cannot make move - spot already taken");
@@ -140,18 +141,18 @@ impl Game {
         }
     }
 
-    pub fn get_result(&self) -> Option<(i32, u64)> {
+    pub fn get_result(&self) -> Option<(f32, u64)> {
 
         for &long in WINS.iter() {
             if self.light & long == long {
-                return Some((1, long));
+                return Some((1.0, long));
             }
             else if self.dark & long == long {
-                return Some((-1, long));
+                return Some((-1.0, long));
             }
         }
         if (self.light | self.dark) & MASK == MASK {
-            return Some((0,0));
+            return Some((0.0,0));
         }
         return None;
     }
