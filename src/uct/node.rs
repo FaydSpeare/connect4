@@ -208,7 +208,7 @@ impl Tree {
 
         }
 
-        println!("eval: {}", score);
+        //println!("eval: {}", score);
         best_move
     }
 

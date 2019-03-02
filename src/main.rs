@@ -57,9 +57,9 @@ fn main() {
 
         if b {
             if g.turn {
-                g.make_move(uct(g.replicate(), 5000000));
+                g.make_move(uct(g.replicate(), 500000));
             } else {
-                g.make_move(uct(g.replicate(), 5000000));
+                g.make_move(uct(g.replicate(), 500000));
             }
         }
         b = true;
