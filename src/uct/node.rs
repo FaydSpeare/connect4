@@ -123,13 +123,13 @@ impl Tree {
         creation
     }
 
-    pub fn run(&mut self, game: Game) -> i32 {
+    pub fn run(&mut self, game: Game, it: i32) -> i32 {
 
-        let mut root = Node::new(game.get_moves(), true);
+        let mut root = Node::new(game.get_moves(), game.turn);
         let root_this = root.this.unwrap();
         self.nodes.push(root);
 
-        for j in 0..200000 {
+        for j in 0..it {
             let mut g = game.replicate();
             let mut id = 0;
             let mut depth = 0;
@@ -208,7 +208,7 @@ impl Tree {
 
         }
 
-        //println!("best move: {}", best_move);
+        println!("eval: {}", score);
         best_move
     }
 
@@ -309,8 +309,8 @@ impl Node {
     }
 }
 
-pub fn uct(game: Game) -> i32 {
-    Tree::new().run(game)
+pub fn uct(game: Game, it: i32) -> i32 {
+    Tree::new().run(game, it)
 }
 
 

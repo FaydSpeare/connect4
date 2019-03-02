@@ -50,9 +50,40 @@ fn main() {
 
 
     let mut g = Game::build_game();
+    //g.make_move(3);
+    let mut b = false;
 
     while g.get_result().is_none() {
-        g.make_move(uct(g.replicate()));
+
+        if b {
+            if g.turn {
+                g.make_move(uct(g.replicate(), 5000000));
+            } else {
+                g.make_move(uct(g.replicate(), 5000000));
+            }
+        }
+        b = true;
+
+
+
+        println!("{}", g);
+
+
+
+        println!("enter move: ");
+        let mut input = String::new();
+
+        std::io::stdin().read_line(&mut input).expect("error: unable to read user input");
+
+        let i = input.trim().parse::<i32>();
+        match i {
+            Ok(k) => g.make_move(k),
+            _ => println!("nope")
+        }
+
+
+
+
     }
 
     println!("{}", g);
