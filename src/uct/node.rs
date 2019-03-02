@@ -91,12 +91,21 @@ impl Tree {
 
     pub fn make_move(&mut self, id: usize) -> Node {
 
+
+        if self.nodes[id].to_expand.len() == 0 { println!("\n\n WHAT WHAT \n\n")}
         let r_i = rand::thread_rng().gen_range(0, self.nodes[id].to_expand.len());
         let m = self.nodes[id].to_expand[r_i];
 
-        let mut creation = Node::new_child(self.nodes[id].this, r_i,
+        //println!("parent a-moves: {:?}", self.nodes[id].all_moves);
+        //println!("parent e-moves: {:?}", self.nodes[id].to_expand);
+
+        let mut creation = Node::new_child(self.nodes[id].this, m,
                                            Option::Some(self.nodes.len()), self.nodes[id].all_moves.to_vec(),
-                                           self.nodes[id].light.clone(), self.nodes[id].dark.clone(), m);
+                                           self.nodes[id].light.clone(), self.nodes[id].dark.clone(), m, self.nodes[id].to_move);
+
+        //println!("making move: {}", m);
+        //println!("pre a-moves: {:?}", creation.all_moves);
+        //println!("pre e-moves: {:?}", creation.to_expand);
 
         if m < 35 {
             let new_move = m + 7;
@@ -114,14 +123,14 @@ impl Tree {
         creation
     }
 
-    pub fn run(&mut self){
+    pub fn run(&mut self, game: Game) -> i32 {
 
-        let mut root = Node::new(vec![0,1,2,3,4,5,6], true);
+        let mut root = Node::new(game.get_moves(), true);
         let root_this = root.this.unwrap();
         self.nodes.push(root);
 
-        for _i in 0..14 {
-            let mut g = Game::build_game();
+        for j in 0..200000 {
+            let mut g = game.replicate();
             let mut id = 0;
             let mut depth = 0;
 
@@ -132,24 +141,30 @@ impl Tree {
                 if self.nodes[id].is_terminal() {
                     break;
                 }
-                println!("depth: {} - id: {}", depth, id);
+                //println!("depth: {} - id: {}", depth, id);
             }
 
-            if self.nodes[id].this.unwrap() == root_this {
+            if id != root_this {
                 if self.nodes[id].is_terminal() {
                     let i = self.nodes[id].this.unwrap();
                     self.update(self.nodes[id].terminal_value, i);
+                    //println!("here {}", j);
+                    continue;
                 }
             }
 
-            let expanded = self.make_move(self.nodes[id].this.unwrap());
+            //println!("{}", g);
+            let expanded = self.make_move(id);
             self.nodes.push(expanded);
 
             let e_id = self.nodes.len()-1;
+            //println!("a-moves: {:?}", self.nodes[e_id].all_moves);
+            //println!("e-moves: {:?}", self.nodes[e_id].to_expand);
+
             g.make_move(self.nodes[e_id].last_move);
 
-            println!("{}", g);
-            println!("node {}", self.nodes[e_id].this.unwrap());
+            //println!("{}", g);
+            //println!("node {}", self.nodes[e_id].this.unwrap());
 
             let result = g.get_result();
 
@@ -162,7 +177,39 @@ impl Tree {
                     g.simulate_to_end();
                 }
             }
+            //println!("{}", g);
+
+            self.update(g.get_result().unwrap().0, e_id);
         }
+
+        let mut score = self.nodes[self.nodes[0].children[0]].wins / self.nodes[self.nodes[0].children[0]].visits;
+        let mut best_move = self.nodes[self.nodes[0].children[0]].last_move;
+
+        for &child in self.nodes[0].children.iter() {
+            //println!("move: {} - wins: {} - visits {}", self.nodes[child].last_move, self.nodes[child].wins, self.nodes[child].visits);
+            //println!("{}", self.nodes[child].wins/self.nodes[child].visits)
+            let s = self.nodes[child].wins / self.nodes[child].visits;
+
+            match game.turn {
+                true => {
+                     if s >= score {
+                         score = s;
+                         best_move = self.nodes[child].last_move;
+                     }
+                }
+                false => {
+                    if s <= score {
+                        score = s;
+                        best_move = self.nodes[child].last_move;
+                    }
+                }
+            }
+
+
+        }
+
+        //println!("best move: {}", best_move);
+        best_move
     }
 
 }
@@ -214,15 +261,16 @@ impl Node {
         }
     }
 
-    pub fn new_child(parent: Option<usize>, move_index: usize, this: Option<usize>, mut p_moves: Vec<i32>, light: u64, dark: u64, last_move: i32) -> Node {
-        p_moves.swap_remove(move_index);
+    pub fn new_child(parent: Option<usize>, move_pos: i32, this: Option<usize>, mut p_moves: Vec<i32>, light: u64, dark: u64, last_move: i32, to_move: bool) -> Node {
+        //p_moves.swap_remove(move_index);
+        p_moves.retain(|&e| e != move_pos);
         Node {
             wins: 0.0,
             visits: 0.0,
             parent,
             this,
             last_move,
-            to_move: true, //TODO
+            to_move, //TODO
             light,
             dark,
             all_moves: p_moves.to_vec(),
@@ -236,7 +284,7 @@ impl Node {
     }
 
     fn uct(&self, visits: f32) -> f32 {
-        let mut expand: f32 = (2.0 * visits.log10()) / self.visits;
+        let mut expand: f32 = (3.0 * visits.log10()) / self.visits;
         expand = expand.sqrt();
         if self.to_move {
             expand *= -1.0;
@@ -261,59 +309,8 @@ impl Node {
     }
 }
 
-pub fn uct(){
-    Tree::new().run();
+pub fn uct(game: Game) -> i32 {
+    Tree::new().run(game)
 }
 
 
-
-/*
-pub fn uct(){
-
-    let tree = Rc::new(RefCell::new(Tree::new()));
-
-    let mut root = Node::new(vec![0,1,2,3,4,5,6], true);
-    let root_this = root.this.unwrap();
-
-    {
-        (*tree).borrow_mut().nodes.push(root);
-    }
-
-    for _i in 0..1 {
-
-        let t = Rc::clone(&tree);
-        let t2 = t.borrow_mut();
-        let node = &tree.borrow().nodes[0];
-
-        let mut depth = 0;
-        let t = tree.borrow();
-        while node.is_not_expandable() {
-            let node = t.select_child(node.this.unwrap());
-            depth += 1;
-            if node.is_terminal() {
-                break;
-            }
-        }
-
-
-        if node.this.unwrap() == root_this {
-            if node.is_terminal() {
-                //tree.borrow_mut().update(node.terminal_value, node.this.unwrap());
-            }
-        }
-
-
-
-        //let expanded = tree.borrow_mut().make_move(node.this.unwrap());
-
-        /*
-        let exp = expanded.this.unwrap();
-        tree.nodes.push(expanded);
-        let expanded = &tree.nodes[exp];
-
-
-        println!("node {}", expanded.last_move);
-        */
-
-    }
-*/

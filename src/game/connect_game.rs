@@ -157,6 +157,16 @@ impl Game {
         return None;
     }
 
+    pub fn replicate(&self) -> Game {
+        Game {
+            light: self.light.clone(),
+            dark: self.dark.clone(),
+            turn: self.turn.clone(),
+            history: self.history.to_vec(),
+            moves: self.moves.to_vec()
+        }
+    }
+
 }
 
 impl fmt::Display for Game {

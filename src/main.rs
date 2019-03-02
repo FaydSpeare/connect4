@@ -29,12 +29,14 @@ fn main() {
 
     let start = Instant::now();
 
+    /*
     let mut g;
     for _i in 0..400000 {
         g = Game::build_game();
         g.simulate_to_end();
         //println!("{}", g);
     }
+    */
 
 
     /*
@@ -46,13 +48,23 @@ fn main() {
     println!("{}", g);
     */
 
+
+    let mut g = Game::build_game();
+
+    while g.get_result().is_none() {
+        g.make_move(uct(g.replicate()));
+    }
+
+    println!("{}", g);
+
+
     let elapsed = start.elapsed();
 
     println!("Duration: {}", elapsed.as_secs() * 1000 +
         elapsed.subsec_nanos() as u64 / 1_000_000);
 
 
-    uct();
+
 
 }
 
