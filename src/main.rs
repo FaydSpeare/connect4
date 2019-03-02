@@ -16,6 +16,8 @@ mod uct {
 
 use game::connect_game::*;
 
+use uct::node::*;
+
 #[allow(unused_imports)]
 use game::generation::*;
 
@@ -49,6 +51,7 @@ fn main() {
         elapsed.subsec_nanos() as u64 / 1_000_000);
 
 
+    uct();
 
 }
 

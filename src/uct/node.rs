@@ -2,156 +2,99 @@ use rand::Rng;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-pub struct Tree<'t> {
-    pub nodes: Vec<Node<'t>>
+pub struct Tree {
+    pub nodes: Vec<Node>
 }
 
-impl<'t> Tree<'t> {
+impl Tree {
 
-    pub fn new() -> Tree<'t> {
+    pub fn new() -> Tree {
         Tree {
             nodes: vec![]
         }
     }
-}
 
-pub struct Node<'t> {
-
-    tree: &'t mut Tree<'t>,
-
-    pub wins: f32,
-    pub visits: f32,
-
-    pub parent: Option<usize>,
-    pub this: Option<usize>,
-    pub last_move: i32,
-
-    pub to_move: bool,
-
-    pub all_moves: Vec<i32>,
-    pub to_expand: Vec<i32>,
-
-    children: Vec<Node<'t>>,
-
-    pub terminal: bool,
-    pub terminal_value: f32,
-    pub terminal_depth: i32,
-
-    pub terminal_sum: f32
-}
-
-impl<'t> Node<'t> {
-
-    pub fn new(moves: Vec<i32>, to_move: bool, tree: &'t mut Tree<'t>) -> Node<'t> {
-        let mut x = 0;
-        {
-            x = tree.nodes.len();
-        }
-        Node {
-            tree,
-            wins: 0.0,
-            visits: 0.0,
-            parent: None,
-            this: Option::Some(x),
-            last_move: -1,
-            to_move,
-            all_moves: moves.to_vec(),
-            to_expand: moves.to_vec(),
-            children: vec![],
-            terminal: false,
-            terminal_value: 0.0,
-            terminal_depth: -1,
-            terminal_sum: 0.0
+    pub fn update(&mut self, value: f32, id: usize){
+        self.nodes[id].wins += value;
+        self.nodes[id].visits += 1.0;
+        if let Some(p) = self.nodes[id].parent {
+            self.update(value, p);
         }
     }
 
-    pub fn new_child(parent: Option<usize>, move_index: usize, tree: &'t mut Tree<'t>) -> Node<'t> {
-        let mut moves: Vec<i32> = tree.nodes[parent.unwrap()].all_moves.to_vec();
-        moves.swap_remove(move_index);
-        let mut x= 0;
-        {
-            x = tree.nodes.len();
-        }
-        Node {
-            tree,
-            wins: 0.0,
-            visits: 0.0,
-            parent,
-            this: Option::Some(x), //TODO
-            last_move: -1,
-            to_move: true, //TODO
-            all_moves: moves.to_vec(),
-            to_expand: moves,
-            children: vec![],
-            terminal: false,
-            terminal_value: 0.0,
-            terminal_depth: -1,
-            terminal_sum: 0.0
+    pub fn set_terminal_value(&mut self, value: f32, mut depth: i32, id: usize){
+        self.nodes[id].terminal_value = value;
+        self.nodes[id].terminal_depth = depth;
+        self.nodes[id].terminal = true;
+
+        match self.nodes[id].parent {
+            Some(p) => {
+                depth += 1;
+                match self.nodes[p].to_move {
+                    true => {
+                        if self.nodes[id].terminal_value == 1.0 {
+                            self.set_terminal_value(value, depth, p);
+                        }
+                        else if self.nodes[id].terminal_value == -1.0 {
+                            self.nodes[p].add_to_sum(value);
+                            if self.nodes[p].terminal_sum / (self.nodes[p].children.len() as f32) == -1.0 {
+                                self.set_terminal_value(value, depth, p);
+                            }
+                        }
+                    }
+                    false => {
+                        if self.nodes[id].terminal_value == -1.0 {
+                            self.set_terminal_value(value, depth, p);
+                        }
+                        else if self.nodes[id].terminal_value == 1.0 {
+                            self.nodes[p].add_to_sum(value);
+                            if self.nodes[p].terminal_sum / (self.nodes[p].children.len() as f32) == 1.0 {
+                                self.set_terminal_value(value, depth, p);
+                            }
+                        }
+                    }
+                }
+            }
+            None => ()
         }
     }
 
-    pub fn update(&mut self, value: f32){
-        self.wins += value;
-        self.visits += 1.0;
-        if let Some(p) = self.parent {
-            self.tree.nodes[p].update(value);
-        }
+    pub fn select_child(&self, id: usize) -> &Node {
 
-    }
+        let mut best_uct = self.nodes[self.nodes[id].children[0]].uct(self.nodes[id].visits);
+        let mut best_child = &self.nodes[self.nodes[id].children[0]];
 
-    pub fn select_child(&self) -> usize {
-
-        let mut best_uct = self.children[0].uct();
-        let mut best_child = self.children[0].this;
-
-        match self.to_move {
+        match self.nodes[id].to_move {
             false => {
-                for child in self.children.iter() {
-                    let uct = child.uct();
+                for &child in self.nodes[id].children.iter() {
+                    let uct = self.nodes[child].uct(self.nodes[id].visits);
                     if uct <= best_uct {
                         best_uct = uct;
-                        best_child = child.this;
+                        best_child = &self.nodes[child];
                     }
                 }
             }
             true => {
-                for child in self.children.iter() {
-                    let uct = child.uct();
+                for &child in self.nodes[id].children.iter() {
+                    let uct = self.nodes[child].uct(self.nodes[id].visits);
                     if uct >= best_uct {
                         best_uct = uct;
-                        best_child = child.this;
+                        best_child = &self.nodes[child];
                     }
                 }
             }
         }
-        return best_child.unwrap();
+        return best_child;
     }
 
-    fn uct(&self) -> f32 {
-        match self.parent {
-            Some(p) => {
-                let mut expand: f32 = (2.0*self.tree.nodes[p].visits.log10())/self.visits;
-                expand = expand.sqrt();
+    pub fn make_move(&mut self, id: usize) -> Node {
 
-                if self.to_move {
-                    expand *= -1.0;
-                }
+        let r_i = rand::thread_rng().gen_range(0, self.nodes[id].to_expand.len());
+        let m = self.nodes[id].to_expand[r_i];
 
-                return self.wins/self.visits + expand;
-            }
-            None => panic!("DEBUG: uct - parent was None")
-        }
-    }
-
-    pub fn is_not_expandable(&self) -> bool {
-        self.to_expand.is_empty()
-    }
-
-    pub fn make_move(&'t mut self) -> usize {
-        let r_i = rand::thread_rng().gen_range(0, self.to_expand.len());
-        let m = self.to_expand[r_i];
-
-        let mut creation = Node::new_child(self.this, r_i, self.tree);
+        let mut creation = Node::new_child(self.nodes[id].this, r_i,
+                                           Option::Some(self.nodes.len()), self.nodes[id].all_moves.to_vec(),
+                                           self.nodes[id].light.clone(), self.nodes[id].dark.clone(), m);
 
         if m < 35 {
             let new_move = m + 7;
@@ -163,13 +106,95 @@ impl<'t> Node<'t> {
         // TODO move making
 
         creation.to_move = !creation.to_move;
-        self.children.push(creation);
-        self.to_expand.pop();
+        self.nodes[id].children.push(creation.this.unwrap());
+        self.nodes[id].to_expand.swap_remove(r_i);
 
-        self.children.last().unwrap().this.unwrap()
+        creation
     }
 
-    pub fn set_terminal(&mut self, terminal: bool){
+}
+
+pub struct Node {
+
+    pub wins: f32,
+    pub visits: f32,
+
+    pub parent: Option<usize>,
+    pub this: Option<usize>,
+    pub last_move: i32,
+
+    pub to_move: bool,
+    pub light: u64,
+    pub dark: u64,
+
+    pub all_moves: Vec<i32>,
+    pub to_expand: Vec<i32>,
+
+    children: Vec<usize>,
+
+    pub terminal: bool,
+    pub terminal_value: f32,
+    pub terminal_depth: i32,
+
+    pub terminal_sum: f32
+}
+
+impl Node {
+    pub fn new(moves: Vec<i32>, to_move: bool) -> Node {
+        Node {
+            wins: 0.0,
+            visits: 0.0,
+            parent: None,
+            this: Option::Some(0),
+            last_move: -1,
+            to_move,
+            light: 0b0,
+            dark: 0b0,
+            all_moves: moves.to_vec(),
+            to_expand: moves.to_vec(),
+            children: vec![],
+            terminal: false,
+            terminal_value: 0.0,
+            terminal_depth: -1,
+            terminal_sum: 0.0
+        }
+    }
+
+    pub fn new_child(parent: Option<usize>, move_index: usize, this: Option<usize>, mut p_moves: Vec<i32>, light: u64, dark: u64, last_move: i32) -> Node {
+        p_moves.swap_remove(move_index);
+        Node {
+            wins: 0.0,
+            visits: 0.0,
+            parent,
+            this,
+            last_move,
+            to_move: true, //TODO
+            light,
+            dark,
+            all_moves: p_moves.to_vec(),
+            to_expand: p_moves,
+            children: vec![],
+            terminal: false,
+            terminal_value: 0.0,
+            terminal_depth: -1,
+            terminal_sum: 0.0
+        }
+    }
+
+    fn uct(&self, visits: f32) -> f32 {
+        let mut expand: f32 = (2.0 * visits.log10()) / self.visits;
+        expand = expand.sqrt();
+        if self.to_move {
+            expand *= -1.0;
+        }
+        return self.wins / self.visits + expand;
+    }
+
+    pub fn is_not_expandable(&self) -> bool {
+        self.to_expand.is_empty()
+    }
+
+    pub fn set_terminal(&mut self, terminal: bool) {
         self.terminal = terminal;
     }
 
@@ -177,75 +202,48 @@ impl<'t> Node<'t> {
         self.terminal
     }
 
-    pub fn add_to_sum(&mut self, value: f32){
+    pub fn add_to_sum(&mut self, value: f32) {
         self.terminal_sum += value;
     }
-
-    pub fn set_terminal_value(&mut self, value: f32, mut depth: i32){
-        self.terminal_value = value;
-        self.terminal_depth = depth;
-        self.terminal = true;
-
-        match self.parent {
-            Some(p) => {
-                depth += 1;
-                match self.tree.nodes[p].to_move {
-                    true => {
-                        if self.terminal_value == 1.0 {
-                            self.tree.nodes[p].set_terminal_value(value, depth);
-                        }
-                        else if self.terminal_value == -1.0 {
-                            self.tree.nodes[p].add_to_sum(self.terminal_value);
-                            if self.tree.nodes[p].terminal_sum / (self.tree.nodes[p].children.len() as f32) == -1.0 {
-                                self.tree.nodes[p].set_terminal_value(self.terminal_value, depth);
-                            }
-                        }
-                    }
-                    false => {
-                        if self.terminal_value == -1.0 {
-                            self.tree.nodes[p].set_terminal_value(value, depth);
-                        }
-                        else if self.terminal_value == 1.0 {
-                            self.tree.nodes[p].add_to_sum(self.terminal_value);
-                            if self.tree.nodes[p].terminal_sum / (self.tree.nodes[p].children.len() as f32) == 1.0 {
-                                self.tree.nodes[p].set_terminal_value(self.terminal_value, depth);
-                            }
-                        }
-                    }
-                }
-            }
-            None => ()
-        }
-    }
-
 }
+
 
 pub fn uct(){
 
-    let tree = Rc::new(RefCell::new(Tree::new()));
-    let root = Node::new(vec![0,1,2,3,4,5,6], true, &mut tree.borrow_mut());
+    let mut tree = Tree::new();
+    let mut root = Node::new(vec![0,1,2,3,4,5,6], true);
+    let root_this = root.this.unwrap();
+    tree.nodes.push(root);
 
     for _i in 0..7 {
 
-        let mut node = root;
+        let node = &tree.nodes[0];
 
         let mut depth = 0;
         while node.is_not_expandable() {
-            node = tree.borrow().nodes[node.select_child()];
+            let node = tree.select_child(node.this.unwrap());
             depth += 1;
             if node.is_terminal() {
                 break;
             }
         }
 
-        if node.this.unwrap() == root.this.unwrap() {
+
+        if node.this.unwrap() == root_this {
             if node.is_terminal() {
-                node.update(node.terminal_value);
+                tree.update(node.terminal_value, node.this.unwrap());
             }
         }
 
 
 
+        let expanded = tree.make_move(node.this.unwrap());
+        let exp = expanded.this.unwrap();
+        tree.nodes.push(expanded);
+        let expanded = &tree.nodes[exp];
+
+
+        println!("node {}", expanded.last_move);
 
 
     }
