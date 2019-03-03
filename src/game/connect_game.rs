@@ -12,7 +12,7 @@ pub struct Game {
     pub turn: bool,
 
     history: Vec<i32>,
-    moves: Vec<i32>
+    pub moves: Vec<i32>
 }
 
 
@@ -77,6 +77,7 @@ impl Game {
         else if !self.moves.contains(&pos) {
             println!("DEBUG: cannot make move - move not in moves");
             println!("DEBUG: move: {} - moves: {:?}", pos, self.moves);
+            panic!();
         }
         else if is_set(self.light | self.dark, pos) {
             println!("DEBUG: cannot make move - spot already taken");

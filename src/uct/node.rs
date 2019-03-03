@@ -147,6 +147,7 @@ impl Tree {
         let allowed = allowed - 0.001;
         while (elapsed.num_milliseconds() as f32)/1000.0 < allowed {
             it += 1;
+            println!("depth: {}", it);
 
             let mut g = game.replicate();
             let mut id = 0;
@@ -170,7 +171,7 @@ impl Tree {
                 if self.nodes[id].is_terminal() {
                     let i = self.nodes[id].this.unwrap();
                     self.update(self.nodes[id].terminal_value, i);
-                    //println!("here {}", j);
+                    elapsed = start.to(time::PreciseTime::now());
                     continue;
                 }
             }
@@ -187,22 +188,6 @@ impl Tree {
 
             g.make_move(self.nodes[e_id].last_move);
 
-            if self.map.get(&(g.light, g.dark)).is_some(){
-                mapc += 1;
-                /*
-                println!("map hit.");
-                let v = self.map.get(&(g.light, g.dark)).unwrap();
-                println!("{}", *v);
-                println!("{}", self.nodes[*v].light);
-                println!("{}", g.light);
-                println!("{}", self.nodes[*v].dark);
-                println!("{}", g.dark);
-                */
-
-            } else {
-                self.map.insert((g.light, g.dark), e_id);
-                //println!("insert new");
-            }
             self.nodes[e_id].light = g.light;
             self.nodes[e_id].dark = g.dark;
 
