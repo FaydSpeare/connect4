@@ -134,17 +134,19 @@ impl Tree {
 
         let start = time::PreciseTime::now();
 
+        let mut elapsed = start.to(time::PreciseTime::now());
+
+        let mut it = 0;
+        let mut mapc = 0;
+        let mut max_depth = 0;
 
         let mut root = Node::new(game.get_moves(), game.turn);
         let root_this = root.this.unwrap();
         self.nodes.push(root);
 
-        let mut elapsed = start.to(time::PreciseTime::now());
-        let mut it = 0;
-        let mut mapc = 0;
+        let allowed = allowed - 0.001;
         while (elapsed.num_milliseconds() as f32)/1000.0 < allowed {
             it += 1;
-            //println!("{}", (elapsed.num_milliseconds() as f32)/1000.0);
 
             let mut g = game.replicate();
             let mut id = 0;
@@ -158,6 +160,10 @@ impl Tree {
                     break;
                 }
                 //println!("depth: {} - id: {}", depth, id);
+            }
+
+            if depth > max_depth {
+                max_depth = depth;
             }
 
             if id != root_this {
@@ -260,7 +266,7 @@ impl Tree {
         }
 
 
-        println!("it: {} - map count: {}", it, mapc);
+        println!("it: {} - map count: {} - max_depth: {} - time: {:?}", it, mapc, max_depth, ((start.to(time::PreciseTime::now())).num_milliseconds() as f32)/1000.0);
 
         //println!("eval: {}", self.nodes[best_move].wins / self.nodes[best_move].visits);
         best_move
