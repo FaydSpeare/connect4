@@ -130,6 +130,10 @@ impl Tree {
         self.nodes.push(root);
 
         for j in 0..it {
+
+            if j % 100000 == 0 {
+                println!("it: {}", j);
+            }
             let mut g = game.replicate();
             let mut id = 0;
             let mut depth = 0;
@@ -183,12 +187,23 @@ impl Tree {
         }
 
         let mut score = self.nodes[self.nodes[0].children[0]].wins / self.nodes[self.nodes[0].children[0]].visits;
+        //let mut score = self.nodes[self.nodes[0].children[0]].visits;
         let mut best_move = self.nodes[self.nodes[0].children[0]].last_move;
 
         for &child in self.nodes[0].children.iter() {
-            //println!("move: {} - wins: {} - visits {}", self.nodes[child].last_move, self.nodes[child].wins, self.nodes[child].visits);
+            println!("move: {: <4} - wins: {: <7} - visits: {: <10} - value: {: <15.3} - t-val: {: <3} - t-depth: {}",
+                     self.nodes[child].last_move,
+                     self.nodes[child].wins,
+                     self.nodes[child].visits,
+                     self.nodes[child].wins / self.nodes[child].visits,
+                     self.nodes[child].terminal_value,
+                     self.nodes[child].terminal_depth,
+            );
+
             //println!("{}", self.nodes[child].wins/self.nodes[child].visits)
+
             let s = self.nodes[child].wins / self.nodes[child].visits;
+            //let s= self.nodes[child].visits;
 
             match game.turn {
                 true => {
@@ -208,7 +223,7 @@ impl Tree {
 
         }
 
-        //println!("eval: {}", score);
+        //println!("eval: {}", self.nodes[best_move].wins / self.nodes[best_move].visits);
         best_move
     }
 
@@ -284,7 +299,7 @@ impl Node {
     }
 
     fn uct(&self, visits: f32) -> f32 {
-        let mut expand: f32 = (3.0 * visits.log10()) / self.visits;
+        let mut expand: f32 = (2.0 * visits.log(11.0)) / self.visits;
         expand = expand.sqrt();
         if self.to_move {
             expand *= -1.0;
