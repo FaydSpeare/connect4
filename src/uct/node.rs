@@ -1,18 +1,25 @@
+extern crate time;
+use time::PreciseTime;
+
 use rand::Rng;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 use super::super::game::connect_game::*;
+use std::time::Instant;
 
 pub struct Tree {
-    pub nodes: Vec<Node>
+    pub nodes: Vec<Node>,
+    pub map: HashMap<(u64, u64), usize>
 }
 
 impl Tree {
 
     pub fn new() -> Tree {
         Tree {
-            nodes: vec![]
+            nodes: vec![],
+            map: HashMap::new()
         }
     }
 
@@ -123,17 +130,22 @@ impl Tree {
         creation
     }
 
-    pub fn run(&mut self, game: Game, it: i32) -> i32 {
+    pub fn run(&mut self, game: Game, allowed: f32) -> i32 {
+
+        let start = time::PreciseTime::now();
+
 
         let mut root = Node::new(game.get_moves(), game.turn);
         let root_this = root.this.unwrap();
         self.nodes.push(root);
 
-        for j in 0..it {
+        let mut elapsed = start.to(time::PreciseTime::now());
+        let mut it = 0;
+        let mut mapc = 0;
+        while (elapsed.num_milliseconds() as f32)/1000.0 < allowed {
+            it += 1;
+            //println!("{}", (elapsed.num_milliseconds() as f32)/1000.0);
 
-            if j % 100000 == 0 {
-                println!("it: {}", j);
-            }
             let mut g = game.replicate();
             let mut id = 0;
             let mut depth = 0;
@@ -159,6 +171,8 @@ impl Tree {
 
             //println!("{}", g);
             let expanded = self.make_move(id);
+
+
             self.nodes.push(expanded);
 
             let e_id = self.nodes.len()-1;
@@ -166,6 +180,26 @@ impl Tree {
             //println!("e-moves: {:?}", self.nodes[e_id].to_expand);
 
             g.make_move(self.nodes[e_id].last_move);
+
+            if self.map.get(&(g.light, g.dark)).is_some(){
+                mapc += 1;
+                /*
+                println!("map hit.");
+                let v = self.map.get(&(g.light, g.dark)).unwrap();
+                println!("{}", *v);
+                println!("{}", self.nodes[*v].light);
+                println!("{}", g.light);
+                println!("{}", self.nodes[*v].dark);
+                println!("{}", g.dark);
+                */
+
+            } else {
+                self.map.insert((g.light, g.dark), e_id);
+                //println!("insert new");
+            }
+            self.nodes[e_id].light = g.light;
+            self.nodes[e_id].dark = g.dark;
+
 
             //println!("{}", g);
             //println!("node {}", self.nodes[e_id].this.unwrap());
@@ -184,6 +218,8 @@ impl Tree {
             //println!("{}", g);
 
             self.update(g.get_result().unwrap().0, e_id);
+
+            elapsed = start.to(time::PreciseTime::now());
         }
 
         let mut score = self.nodes[self.nodes[0].children[0]].wins / self.nodes[self.nodes[0].children[0]].visits;
@@ -222,6 +258,9 @@ impl Tree {
 
 
         }
+
+
+        println!("it: {} - map count: {}", it, mapc);
 
         //println!("eval: {}", self.nodes[best_move].wins / self.nodes[best_move].visits);
         best_move
@@ -299,7 +338,7 @@ impl Node {
     }
 
     fn uct(&self, visits: f32) -> f32 {
-        let mut expand: f32 = (2.0 * visits.log(11.0)) / self.visits;
+        let mut expand: f32 = (3.0 * visits.log10()) / self.visits;
         expand = expand.sqrt();
         if self.to_move {
             expand *= -1.0;
@@ -324,8 +363,8 @@ impl Node {
     }
 }
 
-pub fn uct(game: Game, it: i32) -> i32 {
-    Tree::new().run(game, it)
+pub fn uct(game: Game, allowed: f32) -> i32 {
+    Tree::new().run(game, allowed)
 }
 
 

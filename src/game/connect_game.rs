@@ -5,6 +5,7 @@ use std::fmt;
 
 const MASK: u64 = 0x1FC_0000_0000;
 
+#[derive(PartialEq, Eq, Hash)]
 pub struct Game {
     pub light: u64,
     pub dark: u64,
@@ -13,6 +14,7 @@ pub struct Game {
     history: Vec<i32>,
     moves: Vec<i32>
 }
+
 
 #[allow(dead_code)]
 impl Game {
@@ -49,6 +51,7 @@ impl Game {
     }
 
     pub fn simulate_to_end(&mut self) {
+
         while self.get_result() == None {
             self.make_rand_move();
         }

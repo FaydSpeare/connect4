@@ -13,7 +13,6 @@ mod uct {
     pub mod node;
 }
 
-
 use game::connect_game::*;
 use std::{thread, time};
 use uct::node::*;
@@ -23,30 +22,13 @@ use game::generation::*;
 
 use std::time::Instant;
 use std::time::Duration;
-
+use std::collections::HashMap;
 
 fn main() {
 
+    let start = Instant::now();
+    let elapsed = start.elapsed();
 
-
-    /*
-    let mut g;
-    for _i in 0..400000 {
-        g = Game::build_game();
-        g.simulate_to_end();
-        //println!("{}", g);
-    }
-    */
-
-
-    /*
-    g = Game::build_game();
-    g.make_move(0);
-
-    for _j in 0..20 {g.make_rand_move();}
-
-    println!("{}", g);
-    */
 
 
     let mut g = Game::build_game();
@@ -54,19 +36,19 @@ fn main() {
     let mut b = true;
 
     while g.get_result().is_none() {
-        let start = Instant::now();
         if b {
             if g.turn {
-                g.make_move(uct(g.replicate(), 5000000));
+                g.make_move(uct(g.replicate(), 1.0));
             } else {
-                g.make_move(uct(g.replicate(), 500000));
+                g.make_move(uct(g.replicate(), 1.0));
             }
         }
         b = true;
         let elapsed = start.elapsed();
+        let x = ((elapsed.as_secs() * 1000 +
+            elapsed.subsec_nanos() as u64 / 1_000_000) as f32) /1000.0;
 
-        println!("Duration: {}", elapsed.as_secs() * 1000 +
-            elapsed.subsec_nanos() as u64 / 1_000_000);
+        println!("Duration: {}", x);
 
         //thread::sleep(Duration::from_millis(4000));
         println!("{}", g);
@@ -92,6 +74,27 @@ fn main() {
     }
 
     println!("{}", g);
+
+
+
+    //hashing();
+}
+
+pub fn hashing(){
+
+    let mut g1 = Game::build_game();
+    let mut g2 = Game::build_game();
+    g2.make_rand_move();
+    g1 = g2.replicate();
+
+    let mut x: HashMap<Game, i32> = HashMap::new();
+
+    x.insert(g1, 0);
+
+
+    println!("{}", x.get(&g2).unwrap());
+
+
 
 
 
