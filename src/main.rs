@@ -18,10 +18,10 @@ use uct::node::*;
 
 #[allow(unused_imports)]
 use game::generation::*;
-use std::num::ParseIntError;
 
 use std::env;
 
+const COMMANDS: [&str; 2] = ["move", "undo"];
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -32,7 +32,6 @@ fn main() {
         Ok(t) => t,
         Err(e) => panic!("{}", e)
     };
-
     let p2: bool = match args[2].parse(){
         Ok(t) => t,
         Err(e) => panic!("{}", e)
@@ -48,7 +47,6 @@ fn main() {
             Err(e) => panic!("{}", e)
         }
     }
-
     if !p2 {
         let mut x = 3;
         if !p1 { x += 1 }
@@ -62,17 +60,17 @@ fn main() {
     play_game(p1, p2, p1_time, p2_time);
 }
 
-pub fn get_user_move() -> Result<i32, ParseIntError> {
-    println!("enter move: ");
+pub fn get_user_input<T: std::str::FromStr>(string: &str) -> Result<T, <T as std::str::FromStr>::Err> {
+    println!("{}", string);
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).expect("error: unable to read user input");
-    input.trim().parse::<i32>()
+    input.trim().parse::<T>()
 }
 
 pub fn handle_user_move(g: &mut Game) {
     let mut repeat: bool = true;
     while repeat {
-        match get_user_move() {
+        match get_user_input::<i32>("Enter Move: ") {
             Ok(k) => {
                 if !g.moves.contains(&k){
                     println!("Invalid Entry - move cannot be made");
@@ -84,6 +82,28 @@ pub fn handle_user_move(g: &mut Game) {
             _ => println!("Invalid Entry - enter a move")
         }
     }
+}
+
+pub fn offer_command() -> i32 {
+    let repeat: bool = true;
+
+    while repeat {
+        match get_user_input::<String>("Enter Command: "){
+            Ok(command) => {
+                let command = command.to_lowercase();
+                if COMMANDS.contains(&command.as_ref()) {
+                    match command.as_ref() {
+                        "move" => return 0,
+                        "undo" => return 1,
+                        _ => ()
+                    }
+                }
+            }
+            _ => ()
+        }
+        println!("Valid Commands: {:?}", COMMANDS);
+    }
+    -1
 }
 
 pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_time: Option<f32>){
@@ -112,26 +132,62 @@ pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_ti
         }
     }
 
+    let mut skip = false;
+
     while g.get_result().is_none() {
 
-        match player_one {
-            true => handle_user_move(&mut g),
-            false => {
-                g.make_move(uct(g.replicate(), p1_thinking_time));
-            }
-        }
-        println!("{}", g);
-
-        if g.get_result().is_none() {
-            match player_two {
-                true => handle_user_move(&mut g),
+        if !skip {
+            match player_one {
+                true => {
+                    let i = offer_command();
+                    if i == 1 {
+                        g.undo_move();
+                        if !player_two {
+                            g.undo_move();
+                            skip = true;
+                        }
+                    } else {
+                        handle_user_move(&mut g)
+                    }
+                },
                 false => {
-                    g.make_move(uct(g.replicate(), p2_thinking_time));
+                    g.make_move(uct(g.replicate(), p1_thinking_time));
                 }
             }
+            println!("{}", g);
+        } else {
+            skip = false;
         }
-        println!("{}", g);
+
+        if g.get_result().is_none() {
+
+            if !skip {
+                match player_two {
+                    true => {
+                        let i = offer_command();
+                        if i == 1 {
+                            g.undo_move();
+                            if !player_one {
+                                g.undo_move();
+                                skip = true;
+                            }
+                        } else {
+                            handle_user_move(&mut g)
+                        }
+
+                    },
+                    false => {
+                        g.make_move(uct(g.replicate(), p2_thinking_time));
+                    }
+                }
+                println!("{}", g);
+            } else {
+                skip = false;
+            }
+        }
     }
+
+    println!("done");
 }
 
 //thread::sleep(Duration::from_millis(4000));

@@ -135,8 +135,8 @@ impl Game {
                             true => self.light ^= n,
                             false => self.dark ^= n
                         }
-                        self.moves.retain(|&e| e != last_move);
-                        if last_move > 6 { self.moves.push(last_move - 7); }
+                        self.moves.retain(|&e| e != last_move + 7);
+                        self.moves.push(last_move);
                     },
                     false => println!("DEBUG: cannot undo move - last_move was not made")
                 }
