@@ -1,13 +1,9 @@
 extern crate time;
-use time::PreciseTime;
 
 use rand::Rng;
-use std::rc::Rc;
-use std::cell::RefCell;
 use std::collections::HashMap;
 
 use super::super::game::connect_game::*;
-use std::time::Instant;
 
 pub struct Tree {
     pub nodes: Vec<Node>,
@@ -130,29 +126,28 @@ impl Tree {
         creation
     }
 
-    pub fn run(&mut self, game: Game, allowed: f32) -> i32 {
+    pub fn run(&mut self, game: Game, allowed: f32, verbose: bool) -> i32 {
 
         let start = time::PreciseTime::now();
-
-        let mut elapsed = start.to(time::PreciseTime::now());
-
         let mut it = 0;
-        let mut mapc = 0;
         let mut max_depth = 0;
 
-        let mut root = Node::new(game.get_moves(), game.turn);
+        let root = Node::new(game.get_moves(), game.turn);
         let root_this = root.this.unwrap();
         self.nodes.push(root);
 
+        // ensure search does not run overtime.
         let allowed = allowed - 0.001;
-        while (elapsed.num_milliseconds() as f32)/1000.0 < allowed {
+
+        // loop while time allows
+        while (start.to(time::PreciseTime::now()).num_milliseconds() as f32)/1000.0 < allowed {
             it += 1;
-            println!("depth: {}", it);
 
             let mut g = game.replicate();
             let mut id = 0;
             let mut depth = 0;
 
+            // SELECT NODE
             while self.nodes[id].is_not_expandable() {
                 id = self.select_child(self.nodes[id].this.unwrap());
                 g.make_move(self.nodes[id].last_move);
@@ -160,45 +155,40 @@ impl Tree {
                 if self.nodes[id].is_terminal() {
                     break;
                 }
-                //println!("depth: {} - id: {}", depth, id);
             }
 
+            // update depth
             if depth > max_depth {
                 max_depth = depth;
             }
 
+            // UPDATE IF TERMINAL
             if id != root_this {
                 if self.nodes[id].is_terminal() {
                     let i = self.nodes[id].this.unwrap();
                     self.update(self.nodes[id].terminal_value, i);
-                    elapsed = start.to(time::PreciseTime::now());
                     continue;
                 }
             }
 
-            //println!("{}", g);
+            // EXPAND
             let expanded = self.make_move(id);
-
-
             self.nodes.push(expanded);
-
             let e_id = self.nodes.len()-1;
-            //println!("a-moves: {:?}", self.nodes[e_id].all_moves);
-            //println!("e-moves: {:?}", self.nodes[e_id].to_expand);
 
+            // update game board
             g.make_move(self.nodes[e_id].last_move);
 
+            // update node bit-boards
             self.nodes[e_id].light = g.light;
             self.nodes[e_id].dark = g.dark;
 
-
-            //println!("{}", g);
-            //println!("node {}", self.nodes[e_id].this.unwrap());
-
+            // query result of expanded
             let result = g.get_result();
 
+            // SIMULATE IF NOT TERMINAL
             match result {
-                Some((a, b)) => {
+                Some((a, _b)) => {
                     self.nodes[e_id].set_terminal(true);
                     self.set_terminal_value(a, 1, e_id);
                 }
@@ -206,32 +196,29 @@ impl Tree {
                     g.simulate_to_end();
                 }
             }
-            //println!("{}", g);
 
+            // UPDATE WITH RESULT
             self.update(g.get_result().unwrap().0, e_id);
-
-            elapsed = start.to(time::PreciseTime::now());
         }
 
-        let mut score = self.nodes[self.nodes[0].children[0]].wins / self.nodes[self.nodes[0].children[0]].visits;
-        //let mut score = self.nodes[self.nodes[0].children[0]].visits;
+        // assess best move
+        let first_child = &self.nodes[self.nodes[0].children[0]];
+        let mut score = first_child.wins / first_child.visits;
         let mut best_move = self.nodes[self.nodes[0].children[0]].last_move;
 
-        for &child in self.nodes[0].children.iter() {
-            println!("move: {: <4} - wins: {: <7} - visits: {: <10} - value: {: <15.3} - t-val: {: <3} - t-depth: {}",
-                     self.nodes[child].last_move,
-                     self.nodes[child].wins,
-                     self.nodes[child].visits,
-                     self.nodes[child].wins / self.nodes[child].visits,
-                     self.nodes[child].terminal_value,
-                     self.nodes[child].terminal_depth,
-            );
 
-            //println!("{}", self.nodes[child].wins/self.nodes[child].visits)
+        if verbose {
+            println!("{:-<100}{}",">","<");
+            println!(" Search Returned the Following: ~ verbose = TRUE");
+            println!("{:-<100}{}",">","<");
+        }
+        for &child in self.nodes[0].children.iter() {
+
+            if verbose {
+                self.print_info(child);
+            }
 
             let s = self.nodes[child].wins / self.nodes[child].visits;
-            //let s= self.nodes[child].visits;
-
             match game.turn {
                 true => {
                      if s >= score {
@@ -249,16 +236,29 @@ impl Tree {
 
 
         }
+        if verbose {  println!("{:-<100}{}",">","<"); }
+        if verbose {
+            let duration = ((start.to(time::PreciseTime::now())).num_milliseconds() as f32)/1000.0;
+            println!(" Iterations: {} - Iterations/s {} - Max-Depth: {} - Time: {:?}", it, (it as f32)/duration,
+                     max_depth, duration);
+            println!("{:-<100}{}",">","<");
+        }
 
+        return best_move;
+    }
 
-        println!("it: {} - map count: {} - max_depth: {} - time: {:?}", it, mapc, max_depth, ((start.to(time::PreciseTime::now())).num_milliseconds() as f32)/1000.0);
-
-        //println!("eval: {}", self.nodes[best_move].wins / self.nodes[best_move].visits);
-        best_move
+    pub fn print_info(&self, child: usize){
+        println!("move: {: <4} - wins: {: <8} - visits: {: <10} - value: {: <8.3} - t-val: {: <3} - t-depth: {}",
+                 self.nodes[child].last_move,
+                 self.nodes[child].wins,
+                 self.nodes[child].visits,
+                 self.nodes[child].wins / self.nodes[child].visits,
+                 self.nodes[child].terminal_value,
+                 self.nodes[child].terminal_depth,
+        );
     }
 
 }
-
 
 pub struct Node {
 
@@ -306,8 +306,9 @@ impl Node {
         }
     }
 
-    pub fn new_child(parent: Option<usize>, move_pos: i32, this: Option<usize>, mut p_moves: Vec<i32>, light: u64, dark: u64, last_move: i32, to_move: bool) -> Node {
-        //p_moves.swap_remove(move_index);
+    pub fn new_child(parent: Option<usize>, move_pos: i32, this: Option<usize>,
+                     mut p_moves: Vec<i32>, light: u64, dark: u64,
+                     last_move: i32, to_move: bool) -> Node {
         p_moves.retain(|&e| e != move_pos);
         Node {
             wins: 0.0,
@@ -355,7 +356,7 @@ impl Node {
 }
 
 pub fn uct(game: Game, allowed: f32) -> i32 {
-    Tree::new().run(game, allowed)
+    Tree::new().run(game, allowed, true)
 }
 
 
