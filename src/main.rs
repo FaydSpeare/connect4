@@ -18,7 +18,6 @@ use uct::node::*;
 
 #[allow(unused_imports)]
 use game::generation::*;
-
 use std::env;
 
 const COMMANDS: [&str; 3] = ["move", "undo", "analyse"];
@@ -57,20 +56,18 @@ fn main() {
         }
     }
 
-
     let x = 3 + match p1 { false => 1, _ => 0 } + match p2 { false => 1, _ => 0 };
     let commands = if args.len() > x {
         match args[x].parse() {
             Ok(t) => t,
             _ => {
-                println!("Unknown 5th Argument - should be true/false. Assuming no commands.");
+                println!("Unknown Last Argument - should be true/false. Assuming no commands.");
                 false
             }
         }
     } else {
         false
     };
-
 
     play_game(p1, p2, p1_time, p2_time, commands);
 }
@@ -219,9 +216,9 @@ pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_ti
     println!("Game Over.")
 }
 
+/*
 //thread::sleep(Duration::from_millis(4000));
 
-/*
 use std::collections::HashMap;
 
 pub fn hashing(){
