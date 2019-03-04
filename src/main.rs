@@ -21,7 +21,7 @@ use game::generation::*;
 
 use std::env;
 
-const COMMANDS: [&str; 2] = ["move", "undo"];
+const COMMANDS: [&str; 3] = ["move", "undo", "analyse"];
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -57,7 +57,22 @@ fn main() {
         }
     }
 
-    play_game(p1, p2, p1_time, p2_time);
+
+    let x = 3 + match p1 { false => 1, _ => 0 } + match p2 { false => 1, _ => 0 };
+    let commands = if args.len() > x {
+        match args[x].parse() {
+            Ok(t) => t,
+            _ => {
+                println!("Unknown 5th Argument - should be true/false. Assuming no commands.");
+                false
+            }
+        }
+    } else {
+        false
+    };
+
+
+    play_game(p1, p2, p1_time, p2_time, commands);
 }
 
 pub fn get_user_input<T: std::str::FromStr>(string: &str) -> Result<T, <T as std::str::FromStr>::Err> {
@@ -84,7 +99,7 @@ pub fn handle_user_move(g: &mut Game) {
     }
 }
 
-pub fn offer_command() -> i32 {
+pub fn offer_command() -> (i32, f32) {
     let repeat: bool = true;
 
     while repeat {
@@ -93,8 +108,17 @@ pub fn offer_command() -> i32 {
                 let command = command.to_lowercase();
                 if COMMANDS.contains(&command.as_ref()) {
                     match command.as_ref() {
-                        "move" => return 0,
-                        "undo" => return 1,
+                        "move" => return (0, 0.0),
+                        "undo" => return (1, 0.0),
+                        "analyse" => {
+                            loop {
+                                match get_user_input::<f32>("Enter Analysis Time: ") {
+                                    Ok(time) => return (2, time),
+                                    _ => ()
+                                }
+                                println!("Invalid Time Entry.");
+                            }
+                        }
                         _ => ()
                     }
                 }
@@ -103,10 +127,19 @@ pub fn offer_command() -> i32 {
         }
         println!("Valid Commands: {:?}", COMMANDS);
     }
-    -1
+    (-1, 0.0)
 }
 
-pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_time: Option<f32>){
+pub fn execute_command(g: &mut Game, command: (i32, f32)) {
+    if command.0 == 1 {
+        g.undo_move();
+    }
+    else if command.0 == 2 {
+        uct(g.replicate(), command.1);
+    }
+}
+
+pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_time: Option<f32>, commands: bool){
 
     let mut g = Game::build_game();
     println!("Starting Position!");
@@ -132,62 +165,58 @@ pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_ti
         }
     }
 
-    let mut skip = false;
-
     while g.get_result().is_none() {
 
-        if !skip {
+        let mut i = -1;
+
+        if commands {
+            while i != 0 || i != 1 {
+                let command = offer_command();
+                execute_command(&mut g, command);
+                i = command.0;
+            }
+        }
+
+        if i <= 0 {
             match player_one {
                 true => {
-                    let i = offer_command();
-                    if i == 1 {
-                        g.undo_move();
-                        if !player_two {
-                            g.undo_move();
-                            skip = true;
-                        }
-                    } else {
-                        handle_user_move(&mut g)
-                    }
+                    handle_user_move(&mut g)
                 },
                 false => {
                     g.make_move(uct(g.replicate(), p1_thinking_time));
                 }
             }
-            println!("{}", g);
-        } else {
-            skip = false;
         }
+        println!("{}", g);
+
+
 
         if g.get_result().is_none() {
 
-            if !skip {
+            let mut i = -1;
+            if commands {
+                while i != 0 || i != 1 {
+                    let command = offer_command();
+                    execute_command(&mut g, command);
+                    i = command.0;
+                }
+            }
+
+            if i <= 0 {
                 match player_two {
                     true => {
-                        let i = offer_command();
-                        if i == 1 {
-                            g.undo_move();
-                            if !player_one {
-                                g.undo_move();
-                                skip = true;
-                            }
-                        } else {
-                            handle_user_move(&mut g)
-                        }
-
+                        handle_user_move(&mut g);
                     },
                     false => {
                         g.make_move(uct(g.replicate(), p2_thinking_time));
                     }
                 }
-                println!("{}", g);
-            } else {
-                skip = false;
             }
+            println!("{}", g);
         }
     }
 
-    println!("done");
+    println!("Game Over.")
 }
 
 //thread::sleep(Duration::from_millis(4000));
