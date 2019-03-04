@@ -4,6 +4,9 @@ use rand::Rng;
 use std::collections::HashMap;
 
 use super::super::game::connect_game::*;
+use std::thread;
+use std::sync::Mutex;
+use std::sync::Arc;
 
 pub struct Tree {
     pub nodes: Vec<Node>,
@@ -126,7 +129,7 @@ impl Tree {
         creation
     }
 
-    pub fn run(&mut self, game: Game, allowed: f32, verbose: bool) -> i32 {
+    pub fn run(&mut self, game: Game, allowed: f32, verbose: bool) -> Vec<(i32, f32)> {
 
         let start = time::PreciseTime::now();
         let mut it = 0;
@@ -212,6 +215,8 @@ impl Tree {
             println!(" Search Returned the Following: ~ verbose = TRUE");
             println!("{:-<100}{}",">","<");
         }
+
+        let mut children: Vec<(i32, f32)> = Vec::new();
         for &child in self.nodes[0].children.iter() {
 
             if verbose {
@@ -221,15 +226,42 @@ impl Tree {
             let s = self.nodes[child].wins / self.nodes[child].visits;
             match game.turn {
                 true => {
-                     if s >= score {
-                         score = s;
-                         best_move = self.nodes[child].last_move;
-                     }
-                }
+                    if s >= score {
+                        score = s;
+                        best_move = self.nodes[child].last_move;
+                    }
+                    if children.len() == 0{
+                        children.push((self.nodes[child].last_move, s));
+                    } else {
+                        for i in 0..children.len() {
+                            if s >= children[i].1 {
+                                children.insert(i, (self.nodes[child].last_move, s));
+                                break;
+                            }
+                            else if i == children.len() - 1 {
+                                children.push((self.nodes[child].last_move, s));
+                            }
+                        }
+                    }
+
+                },
                 false => {
                     if s <= score {
                         score = s;
                         best_move = self.nodes[child].last_move;
+                    }
+                    if children.len() == 0{
+                        children.push((self.nodes[child].last_move, s));
+                    } else {
+                        for i in 0..children.len() {
+                            if s <= children[i].1 {
+                                children.insert(i, (self.nodes[child].last_move, s));
+                                break;
+                            }
+                            else if i == children.len() - 1 {
+                                children.push((self.nodes[child].last_move, s));
+                            }
+                        }
                     }
                 }
             }
@@ -244,7 +276,11 @@ impl Tree {
             println!("{:-<100}{}",">","<");
         }
 
-        return best_move;
+
+
+
+
+        return children;
     }
 
     pub fn print_info(&self, child: usize){
@@ -356,7 +392,55 @@ impl Node {
 }
 
 pub fn uct(game: Game, allowed: f32) -> i32 {
-    Tree::new().run(game, allowed, true)
+
+    let averages: Arc<Mutex<Vec<(i32, f32)>>> = Arc::new(Mutex::new(Vec::new()));
+    for k in game.get_moves() {
+        let mut guard = averages.lock().unwrap();
+        let a = &mut *guard;
+        a.push((k, 0.0));
+    }
+    // Make a vector to hold the children which are spawned.
+    let mut children = vec![];
+    let threads = 20;
+
+    for i in 0..threads {
+
+        let g2 = game.replicate();
+        let av = averages.clone();
+
+        // Spin up another thread
+        children.push(thread::spawn(move || {
+            //println!("this is thread number {}", i);
+            let v = Tree::new().run(g2, allowed, false);
+            //println!("{:?}", v);
+
+            let mut guard = av.lock().unwrap();
+            let av = &mut *guard;
+
+            for j in 0..v.len() {
+                for m in 0..v.len() {
+                    if av[m].0 == v[j].0 {
+                        av[m].1 += v[j].1;
+                    }
+                }
+            }
+        }));
+    }
+
+    for child in children {
+        // Wait for the thread to finish. Returns a result.
+        let _ = child.join();
+    }
+
+    let mut guard = averages.lock().unwrap();
+    let a = &mut *guard;
+    let mut b: Vec<(i32, f32)> = a.iter().map(|&(a, b)| (a, b / (threads as f32))).collect();
+
+
+    //b.sort_by_key(|&k| k.1);
+    b.sort_by(|a, b| (b.1).partial_cmp((&a.1)).unwrap());
+    println!("{:?}", b);
+    return b[0].0;
 }
 
 

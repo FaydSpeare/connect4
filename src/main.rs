@@ -167,7 +167,7 @@ pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_ti
         let mut i = -1;
 
         if commands {
-            while i != 0 || i != 1 {
+            while i != 0 && i != 1 {
                 let command = offer_command();
                 execute_command(&mut g, command);
                 i = command.0;
@@ -192,7 +192,7 @@ pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_ti
 
             let mut i = -1;
             if commands {
-                while i != 0 || i != 1 {
+                while i != 0 && i != 1 {
                     let command = offer_command();
                     execute_command(&mut g, command);
                     i = command.0;
