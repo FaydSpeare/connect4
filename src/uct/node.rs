@@ -277,9 +277,9 @@ impl Tree {
         }
 
 
-
-
-
+        if best_move == 1 {
+            // woot
+        }
         return children;
     }
 
@@ -403,17 +403,14 @@ pub fn uct(game: Game, allowed: f32) -> i32 {
     let mut children = vec![];
     let threads = 20;
 
-    for i in 0..threads {
+    for _i in 0..threads {
 
         let g2 = game.replicate();
         let av = averages.clone();
 
         // Spin up another thread
         children.push(thread::spawn(move || {
-            //println!("this is thread number {}", i);
             let v = Tree::new().run(g2, allowed, false);
-            //println!("{:?}", v);
-
             let mut guard = av.lock().unwrap();
             let av = &mut *guard;
 
@@ -437,8 +434,7 @@ pub fn uct(game: Game, allowed: f32) -> i32 {
     let mut b: Vec<(i32, f32)> = a.iter().map(|&(a, b)| (a, b / (threads as f32))).collect();
 
 
-    //b.sort_by_key(|&k| k.1);
-    b.sort_by(|a, b| (b.1).partial_cmp((&a.1)).unwrap());
+    b.sort_by(|a, b| (b.1).partial_cmp(&a.1).unwrap());
     println!("{:?}", b);
     return b[0].0;
 }
