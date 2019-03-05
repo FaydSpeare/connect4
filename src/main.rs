@@ -1,6 +1,6 @@
 
 mod game {
-    pub mod connect_game;
+    pub mod connect_4_game;
     pub mod bits {
         pub mod bit;
     }
@@ -13,7 +13,7 @@ mod uct {
     pub mod node;
 }
 
-use game::connect_game::*;
+use game::connect_4_game::*;
 use uct::node::*;
 
 #[allow(unused_imports)]
@@ -52,7 +52,7 @@ fn main() {
         if args.len() <= x { panic!("Invalid Arguments Given"); }
         match args[x].parse() {
             Ok(t) => p2_time = Some(t),
-            Err(e) => panic!("{}", e)
+            Err(_e) => panic!("Invalid Time Argument")
         }
     }
 
@@ -79,7 +79,7 @@ pub fn get_user_input<T: std::str::FromStr>(string: &str) -> Result<T, <T as std
     input.trim().parse::<T>()
 }
 
-pub fn handle_user_move(g: &mut Game) {
+pub fn handle_user_move(g: &mut Connect4) {
     let mut repeat: bool = true;
     while repeat {
         match get_user_input::<i32>("Enter Move: ") {
@@ -127,18 +127,18 @@ pub fn offer_command() -> (i32, f32) {
     (-1, 0.0)
 }
 
-pub fn execute_command(g: &mut Game, command: (i32, f32)) {
+pub fn execute_command(g: &mut Connect4, command: (i32, f32)) {
     if command.0 == 1 {
         g.undo_move();
     }
     else if command.0 == 2 {
-        uct(g.replicate(), command.1);
+        uct(g.replicate(), command.1, true);
     }
 }
 
 pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_time: Option<f32>, commands: bool){
 
-    let mut g = Game::build_game();
+    let mut g = Connect4::build_game();
     println!("Starting Position!");
     println!("{}", g);
 
@@ -180,7 +180,7 @@ pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_ti
                     handle_user_move(&mut g)
                 },
                 false => {
-                    g.make_move(uct(g.replicate(), p1_thinking_time));
+                    g.make_move(uct(g.replicate(), p1_thinking_time, true));
                 }
             }
         }
@@ -205,7 +205,7 @@ pub fn play_game(player_one: bool, player_two: bool, p1_time: Option<f32>, p2_ti
                         handle_user_move(&mut g);
                     },
                     false => {
-                        g.make_move(uct(g.replicate(), p2_thinking_time));
+                        g.make_move(uct(g.replicate(), p2_thinking_time, false));
                     }
                 }
             }

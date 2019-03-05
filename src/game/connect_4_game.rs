@@ -6,7 +6,7 @@ use std::fmt;
 const MASK: u64 = 0x1FC_0000_0000;
 
 #[derive(PartialEq, Eq, Hash)]
-pub struct Game {
+pub struct Connect4 {
     pub light: u64,
     pub dark: u64,
     pub turn: bool,
@@ -15,12 +15,11 @@ pub struct Game {
     pub moves: Vec<i32>
 }
 
-
 #[allow(dead_code)]
-impl Game {
+impl UCTGame for Connect4 {
 
-    pub fn build_game() -> Game {
-        Game {
+    fn build_game() -> Connect4 {
+        Connect4 {
             light: 0b0,
             dark: 0b0,
             turn: true,
@@ -29,7 +28,7 @@ impl Game {
         }
     }
 
-    pub fn get_moves(&self) -> Vec<i32> {
+    fn get_moves(&self) -> Vec<i32> {
 
         let occupied = self.light|self.dark;
         let size = (occupied & MASK).count_ones();
@@ -50,14 +49,14 @@ impl Game {
         return moves;
     }
 
-    pub fn simulate_to_end(&mut self) {
+    fn simulate_to_end(&mut self) {
 
         while self.get_result() == None {
             self.make_rand_move();
         }
     }
 
-    pub fn sudo_make_move(&mut self, pos: i32, player: bool){
+    fn sudo_make_move(&mut self, pos: i32, player: bool){
         match pos > 41 {
             true => println!("DEBUG: cannot make move - out of range"),
             _ => {
@@ -70,7 +69,7 @@ impl Game {
         }
     }
 
-    pub fn make_move(&mut self, pos: i32) {
+    fn make_move(&mut self, pos: i32) {
         if pos > 41 {
             println!("DEBUG: cannot make move - out of range");
         }
@@ -97,7 +96,7 @@ impl Game {
 
     }
 
-    pub fn make_rand_move(&mut self){
+    fn make_rand_move(&mut self){
         let r_i = rand::thread_rng().gen_range(0, self.moves.len());
         let pos = self.moves[r_i];
 
@@ -113,7 +112,7 @@ impl Game {
         self.history.push(pos);
     }
 
-    pub fn sudo_undo_move(&mut self, pos: i32){
+    fn sudo_undo_move(&mut self, pos: i32){
         match pos > 41 {
             true => println!("DEBUG: cannot undo move - out of range"),
             _ => {
@@ -124,7 +123,7 @@ impl Game {
         }
     }
 
-    pub fn undo_move(&mut self){
+    fn undo_move(&mut self){
         match self.history.pop(){
             Some(last_move) => {
                 match is_set(self.light|self.dark, last_move) {
@@ -145,7 +144,7 @@ impl Game {
         }
     }
 
-    pub fn get_result(&self) -> Option<(f32, u64)> {
+    fn get_result(&self) -> Option<(f32, u64)> {
 
         for &long in WINS.iter() {
             if self.light & long == long {
@@ -161,8 +160,8 @@ impl Game {
         return None;
     }
 
-    pub fn replicate(&self) -> Game {
-        Game {
+    fn replicate(&self) -> Connect4 {
+        Connect4 {
             light: self.light.clone(),
             dark: self.dark.clone(),
             turn: self.turn.clone(),
@@ -171,9 +170,12 @@ impl Game {
         }
     }
 
+    fn get_turn(&self) -> bool {
+        self.turn
+    }
 }
 
-impl fmt::Display for Game {
+impl fmt::Display for Connect4 {
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = String::new();
@@ -236,4 +238,30 @@ impl fmt::Display for Game {
     }
 
 }
+
+pub trait UCTGame {
+
+    fn build_game() -> Self;
+
+    fn get_moves(&self) -> Vec<i32>;
+
+    fn simulate_to_end(&mut self);
+
+    fn sudo_make_move(&mut self, pos: i32, player: bool);
+
+    fn make_move(&mut self, pos: i32);
+
+    fn make_rand_move(&mut self);
+
+    fn sudo_undo_move(&mut self, pos: i32);
+
+    fn undo_move(&mut self);
+
+    fn get_result(&self) -> Option<(f32, u64)>;
+
+    fn replicate(&self) -> Self;
+
+    fn get_turn(&self) -> bool;
+}
+
 

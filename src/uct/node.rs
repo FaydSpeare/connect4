@@ -3,7 +3,7 @@ extern crate time;
 use rand::Rng;
 use std::collections::HashMap;
 
-use super::super::game::connect_game::*;
+use super::super::game::connect_4_game::*;
 use std::thread;
 use std::sync::Mutex;
 use std::sync::Arc;
@@ -129,13 +129,13 @@ impl Tree {
         creation
     }
 
-    pub fn run(&mut self, game: Game, allowed: f32, verbose: bool) -> Vec<(i32, f32)> {
+    pub fn run<U: UCTGame>(&mut self, game: U, allowed: f32, verbose: bool) -> Vec<(i32, f32)> {
 
         let start = time::PreciseTime::now();
         let mut it = 0;
         let mut max_depth = 0;
 
-        let root = Node::new(game.get_moves(), game.turn);
+        let root = Node::new(game.get_moves(), game.get_turn());
         let root_this = root.this.unwrap();
         self.nodes.push(root);
 
@@ -183,8 +183,8 @@ impl Tree {
             g.make_move(self.nodes[e_id].last_move);
 
             // update node bit-boards
-            self.nodes[e_id].light = g.light;
-            self.nodes[e_id].dark = g.dark;
+            //self.nodes[e_id].light = g.light;
+            //self.nodes[e_id].dark = g.dark;
 
             // query result of expanded
             let result = g.get_result();
@@ -224,7 +224,7 @@ impl Tree {
             }
 
             let s = self.nodes[child].wins / self.nodes[child].visits;
-            match game.turn {
+            match game.get_turn() {
                 true => {
                     if s >= score {
                         score = s;
@@ -391,52 +391,64 @@ impl Node {
     }
 }
 
-pub fn uct(game: Game, allowed: f32) -> i32 {
+pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, multi: bool) -> i32 {
 
-    let averages: Arc<Mutex<Vec<(i32, f32)>>> = Arc::new(Mutex::new(Vec::new()));
-    for k in game.get_moves() {
-        let mut guard = averages.lock().unwrap();
-        let a = &mut *guard;
-        a.push((k, 0.0));
-    }
-    // Make a vector to hold the children which are spawned.
-    let mut children = vec![];
-    let threads = 20;
+    if multi {
+        let averages: Arc<Mutex<Vec<(i32, f32)>>> = Arc::new(Mutex::new(Vec::new()));
+        for k in game.get_moves() {
+            let mut guard = averages.lock().unwrap();
+            let a = &mut *guard;
+            a.push((k, 0.0));
+        }
+        // Make a vector to hold the children which are spawned.
+        let mut children = vec![];
+        let threads = 20;
 
-    for _i in 0..threads {
+        for _i in 0..threads {
 
-        let g2 = game.replicate();
-        let av = averages.clone();
+            let g2 = game.replicate();
+            let av = averages.clone();
 
-        // Spin up another thread
-        children.push(thread::spawn(move || {
-            let v = Tree::new().run(g2, allowed, false);
-            let mut guard = av.lock().unwrap();
-            let av = &mut *guard;
+            // Spin up another thread
+            children.push(thread::spawn(move || {
+                let v = Tree::new().run(g2, allowed, false);
+                let mut guard = av.lock().unwrap();
+                let av = &mut *guard;
 
-            for j in 0..v.len() {
-                for m in 0..v.len() {
-                    if av[m].0 == v[j].0 {
-                        av[m].1 += v[j].1;
+                for j in 0..v.len() {
+                    for m in 0..v.len() {
+                        if av[m].0 == v[j].0 {
+                            av[m].1 += v[j].1;
+                        }
                     }
                 }
-            }
-        }));
+            }));
+        }
+
+        for child in children {
+            // Wait for the thread to finish. Returns a result.
+            let _ = child.join();
+        }
+
+        let mut guard = averages.lock().unwrap();
+        let a = &mut *guard;
+        let mut b: Vec<(i32, f32)> = a.iter().map(|&(a, b)| (a, b / (threads as f32))).collect();
+
+
+        b.sort_by(|a, b| (b.1).partial_cmp(&a.1).unwrap());
+        println!("{:?}", b);
+
+
+        if game.get_turn() {
+            return b[0].0;
+        }
+        return b[b.len()-1].0;
+    } else {
+        let v = Tree::new().run(game.replicate(), allowed, true);
+        return v[0].0;
     }
 
-    for child in children {
-        // Wait for the thread to finish. Returns a result.
-        let _ = child.join();
-    }
 
-    let mut guard = averages.lock().unwrap();
-    let a = &mut *guard;
-    let mut b: Vec<(i32, f32)> = a.iter().map(|&(a, b)| (a, b / (threads as f32))).collect();
-
-
-    b.sort_by(|a, b| (b.1).partial_cmp(&a.1).unwrap());
-    println!("{:?}", b);
-    return b[0].0;
 }
 
 
