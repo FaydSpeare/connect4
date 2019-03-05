@@ -7,6 +7,7 @@ use super::super::game::connect_4_game::*;
 use std::thread;
 use std::sync::Mutex;
 use std::sync::Arc;
+use self::time::PreciseTime;
 
 pub struct Tree {
     pub nodes: Vec<Node>,
@@ -129,9 +130,9 @@ impl Tree {
         creation
     }
 
-    pub fn run<U: UCTGame>(&mut self, game: U, allowed: f32, verbose: bool) -> Vec<(i32, f32)> {
+    pub fn run<U: UCTGame>(&mut self, game: U, allowed: f32, verbose: bool, start: PreciseTime) -> Vec<(i32, f32)> {
 
-        let start = time::PreciseTime::now();
+        //let start = time::PreciseTime::now();
         let mut it = 0;
         let mut max_depth = 0;
 
@@ -202,6 +203,11 @@ impl Tree {
 
             // UPDATE WITH RESULT
             self.update(g.get_result().unwrap().0, e_id);
+        }
+
+        if self.nodes[0].children.len() == 0{
+            println!("no search");
+            return Vec::new();
         }
 
         // assess best move
@@ -392,7 +398,7 @@ impl Node {
 }
 
 pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, multi: bool) -> i32 {
-
+    let start = time::PreciseTime::now();
     if multi {
         let averages: Arc<Mutex<Vec<(i32, f32)>>> = Arc::new(Mutex::new(Vec::new()));
         for k in game.get_moves() {
@@ -402,16 +408,17 @@ pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, multi: bool) -> 
         }
         // Make a vector to hold the children which are spawned.
         let mut children = vec![];
-        let threads = 20;
+        let threads = 50;
 
-        for _i in 0..threads {
+        for i in 0..threads {
 
             let g2 = game.replicate();
             let av = averages.clone();
 
             // Spin up another thread
             children.push(thread::spawn(move || {
-                let v = Tree::new().run(g2, allowed, false);
+                println!("start thread {}", i);
+                let v = Tree::new().run(g2, allowed - 0.001*(threads as f32), false, start);
                 let mut guard = av.lock().unwrap();
                 let av = &mut *guard;
 
@@ -438,13 +445,14 @@ pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, multi: bool) -> 
         b.sort_by(|a, b| (b.1).partial_cmp(&a.1).unwrap());
         println!("{:?}", b);
 
-
+        println!("time taken: {}", (start.to(time::PreciseTime::now()).num_milliseconds() as f32)/1000.0);
         if game.get_turn() {
             return b[0].0;
         }
+
         return b[b.len()-1].0;
     } else {
-        let v = Tree::new().run(game.replicate(), allowed, true);
+        let v = Tree::new().run(game.replicate(), allowed, true, start);
         return v[0].0;
     }
 
