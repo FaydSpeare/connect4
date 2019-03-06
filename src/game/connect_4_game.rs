@@ -1,7 +1,16 @@
+extern crate rayon;
+
+use rayon::prelude::*;
+
 use rand::Rng;
 use super::bits::bit::*;
 use super::generation::generator::WINS;
 use std::fmt;
+use std::thread;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::mpsc;
+
 
 const MASK: u64 = 0x1FC_0000_0000;
 
@@ -50,10 +59,35 @@ impl UCTGame for Connect4 {
     }
 
     fn simulate_to_end(&mut self) {
-
         while self.get_result() == None {
             self.make_rand_move();
         }
+    }
+
+    fn simulate_multiple(&mut self, threads: i32) -> f32 {
+
+        let counter = Arc::new(Mutex::new(0.0));
+        let mut handles = vec![];
+
+        let threads = 5;
+        for _ in 0..threads {
+            let mut g2 = self.replicate();
+            let counter = Arc::clone(&counter);
+            let handle = thread::spawn(move || {
+                let mut num = counter.lock().unwrap();
+                g2.simulate_to_end();
+                *num += g2.get_result().unwrap().0;
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
+        let mut x =*counter.lock().unwrap();
+        x / (threads as f32)
+
     }
 
     fn sudo_make_move(&mut self, pos: i32, player: bool){
@@ -246,6 +280,8 @@ pub trait UCTGame {
     fn get_moves(&self) -> Vec<i32>;
 
     fn simulate_to_end(&mut self);
+
+    fn simulate_multiple(&mut self, threads: i32) -> f32;
 
     fn sudo_make_move(&mut self, pos: i32, player: bool);
 

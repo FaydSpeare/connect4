@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 rand = "0.4.0"
 time = "0.1.42"
+rayon = "1.0"
 
 [profile.dev]
 opt-level = 3
