@@ -286,6 +286,9 @@ impl Tree {
         if best_move == 1 {
             // woot
         }
+
+        println!("it:{}", it);
+
         return children;
     }
 
@@ -299,6 +302,8 @@ impl Tree {
                  self.nodes[child].terminal_depth,
         );
     }
+
+
 
 }
 
