@@ -397,9 +397,9 @@ impl Node {
     }
 }
 
-pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, multi: bool) -> i32 {
+pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, threads: i32) -> i32 {
     let start = time::PreciseTime::now();
-    if multi {
+    if threads > 1 {
         let averages: Arc<Mutex<Vec<(i32, f32)>>> = Arc::new(Mutex::new(Vec::new()));
         for k in game.get_moves() {
             let mut guard = averages.lock().unwrap();
@@ -408,16 +408,15 @@ pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, multi: bool) -> 
         }
         // Make a vector to hold the children which are spawned.
         let mut children = vec![];
-        let threads = 50;
 
-        for i in 0..threads {
+        for _i in 0..threads {
 
             let g2 = game.replicate();
             let av = averages.clone();
 
             // Spin up another thread
             children.push(thread::spawn(move || {
-                println!("start thread {}", i);
+                //println!("start thread {}", i);
                 let v = Tree::new().run(g2, allowed - 0.001*(threads as f32), false, start);
                 let mut guard = av.lock().unwrap();
                 let av = &mut *guard;
