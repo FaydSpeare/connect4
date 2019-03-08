@@ -257,8 +257,6 @@ pub fn play_game(player_one: bool, player_two: bool, p1_settings: Option<(f32, i
 
     let mut g = Connect4::build_game();
 
-    println!("{}", g.simulate_multiple(10));
-
     println!("Starting Position!");
     println!("{}", g);
 

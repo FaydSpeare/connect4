@@ -188,7 +188,7 @@ impl Tree {
             //self.nodes[e_id].dark = g.dark;
 
             // query result of expanded
-            let result = g.get_result();
+            let mut result = g.get_result();
 
             // SIMULATE IF NOT TERMINAL
             match result {
@@ -197,12 +197,14 @@ impl Tree {
                     self.set_terminal_value(a, 1, e_id);
                 }
                 None => {
+                    //result = Some((g.simulate_multiple(1), 0b0));
                     g.simulate_to_end();
                 }
             }
 
             // UPDATE WITH RESULT
             self.update(g.get_result().unwrap().0, e_id);
+            //self.update(result.unwrap().0, e_id);
         }
 
         if self.nodes[0].children.len() == 0{
