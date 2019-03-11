@@ -289,7 +289,10 @@ impl Tree {
             // woot
         }
 
-        println!("it:{}", it);
+        if verbose {
+            println!("it:{}", it);
+        }
+
 
         return children;
     }
@@ -404,7 +407,7 @@ impl Node {
     }
 }
 
-pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, threads: i32) -> i32 {
+pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, threads: i32, verbose: bool) -> i32 {
     let start = time::PreciseTime::now();
     if threads > 1 {
         let averages: Arc<Mutex<Vec<(i32, f32)>>> = Arc::new(Mutex::new(Vec::new()));
@@ -449,16 +452,20 @@ pub fn uct< U: UCTGame + Send + 'static>(game: U, allowed: f32, threads: i32) ->
 
 
         b.sort_by(|a, b| (b.1).partial_cmp(&a.1).unwrap());
-        println!("{:?}", b);
 
-        println!("time taken: {}", (start.to(time::PreciseTime::now()).num_milliseconds() as f32)/1000.0);
+        if verbose {
+            println!("{:?}", b);
+
+            println!("time taken: {}", (start.to(time::PreciseTime::now()).num_milliseconds() as f32)/1000.0);
+        }
+
         if game.get_turn() {
             return b[0].0;
         }
 
         return b[b.len()-1].0;
     } else {
-        let v = Tree::new().run(game.replicate(), allowed, true, start);
+        let v = Tree::new().run(game.replicate(), allowed, verbose, start);
         return v[0].0;
     }
 

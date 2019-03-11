@@ -40,8 +40,8 @@ fn main() {
     #[allow(unused_mut, unused_assignments)]
     let mut p2_time= 0.0;
 
-    let p1_threads;
-    let p2_threads;
+    let mut p1_threads;
+    let mut p2_threads;
 
     loop {
         match get_user_input::<String>("Enter Mode: "){
@@ -50,19 +50,18 @@ fn main() {
                     commands = true;
                     break;
 
-                } else if s == "play"{
+                } else if s == "play" {
                     commands = false;
                     loop {
-                        match get_user_input::<String>("Choose Player One (human/comp): "){
+                        match get_user_input::<String>("Choose Player One (human/comp): ") {
                             Ok(p) => {
                                 if p == "human" {
                                     p1 = true;
                                     break;
-                                }
-                                else if p == "comp" {
+                                } else if p == "comp" {
                                     p1 = false;
                                     loop {
-                                        match get_user_input::<f32>("How much time per move: "){
+                                        match get_user_input::<f32>("How much time per move: ") {
                                             Ok(t) => {
                                                 p1_time = t;
                                                 break;
@@ -71,7 +70,7 @@ fn main() {
                                         }
                                     }
                                     loop {
-                                        match get_user_input::<i32>("How many threads: "){
+                                        match get_user_input::<i32>("How many threads: ") {
                                             Ok(t) => {
                                                 if t > 50 {
                                                     println!("Invalid - Max. 50 Threads")
@@ -93,16 +92,15 @@ fn main() {
                         }
                     }
                     loop {
-                        match get_user_input::<String>("Choose Player Two (human/comp): "){
+                        match get_user_input::<String>("Choose Player Two (human/comp): ") {
                             Ok(p) => {
                                 if p == "human" {
                                     p2 = true;
                                     break;
-                                }
-                                else if p == "comp" {
+                                } else if p == "comp" {
                                     p2 = false;
                                     loop {
-                                        match get_user_input::<f32>("How much time per move: "){
+                                        match get_user_input::<f32>("How much time per move: ") {
                                             Ok(t) => {
                                                 p2_time = t;
                                                 break;
@@ -111,7 +109,7 @@ fn main() {
                                         }
                                     }
                                     loop {
-                                        match get_user_input::<i32>("How many threads: "){
+                                        match get_user_input::<i32>("How many threads: ") {
                                             Ok(t) => {
                                                 if t > 50 {
                                                     println!("Invalid - Max. 50 Threads")
@@ -133,6 +131,87 @@ fn main() {
                         }
                     }
                     break;
+                }
+                else if s == "test" {
+
+
+                    loop {
+                        match get_user_input::<f32>("p1 time allowance: ") {
+                            Ok(t) => {
+                                p1_time = t;
+                                break;
+                            }
+                            _ => println!("Invalid Time")
+                        }
+                    }
+
+                    loop {
+                        match get_user_input::<i32>("How many p1 threads: ") {
+                            Ok(t) => {
+                                if t > 50 {
+                                    println!("Invalid - Max. 50 Threads")
+                                } else {
+                                    p1_threads = t;
+                                    break;
+                                }
+                            }
+                            _ => println!("Invalid Number")
+                        }
+                    }
+
+                    loop {
+                        match get_user_input::<f32>("p2 time allowance: ") {
+                            Ok(t) => {
+                                p2_time = t;
+                                break;
+                            }
+                            _ => println!("Invalid Time")
+                        }
+                    }
+
+                    loop {
+                        match get_user_input::<i32>("How many p2 threads: ") {
+                            Ok(t) => {
+                                if t > 50 {
+                                    println!("Invalid - Max. 50 Threads")
+                                } else {
+                                    p2_threads = t;
+                                    break;
+                                }
+                            }
+                            _ => println!("Invalid Number")
+                        }
+                    }
+
+                    let mut games = 0;
+
+                    loop {
+                        match get_user_input::<i32>("How many games: ") {
+                            Ok(t) => {
+                                if t > (((p1_time + p2_time) * 42.0) as i32) {
+                                    println!("That's a lot of games... This may take a while")
+                                }
+                                games = t;
+                                break;
+                            }
+                            _ => println!("Invalid Number")
+                        }
+                    }
+
+                    let mut switch = true;
+                    loop {
+                        match get_user_input::<bool>("Switch sides? ") {
+                            Ok(t) => {
+                                switch = t;
+                                break;
+                            }
+                            _ => println!("Invalid Boolean")
+                        }
+                    }
+
+                    test_game(p1_time, p2_time, p1_threads, p2_threads, games, switch);
+
+
                 } else {
                     println!("Invalid Mode - Modes: {:?}", MODES);
                 }
@@ -243,10 +322,10 @@ pub fn execute_command(g: &mut Connect4, command: (i32, f32, i32)) -> bool {
         g.undo_move();
     }
     else if command.0 == 2 {
-        uct(g.replicate(), command.1, command.2);
+        uct(g.replicate(), command.1, command.2, true);
     }
     else if command.0 == 3 {
-        g.make_move(uct(g.replicate(), command.1, command.2));
+        g.make_move(uct(g.replicate(), command.1, command.2, true));
         return false;
     }
     true
@@ -302,7 +381,7 @@ pub fn play_game(player_one: bool, player_two: bool, p1_settings: Option<(f32, i
                     handle_user_move(&mut g)
                 },
                 false => {
-                    g.make_move(uct(g.replicate(), p1_thinking_time, p1_threads));
+                    g.make_move(uct(g.replicate(), p1_thinking_time, p1_threads, true));
                 }
             }
         }
@@ -325,7 +404,7 @@ pub fn play_game(player_one: bool, player_two: bool, p1_settings: Option<(f32, i
                         handle_user_move(&mut g);
                     },
                     false => {
-                        g.make_move(uct(g.replicate(), p2_thinking_time, p2_threads));
+                        g.make_move(uct(g.replicate(), p2_thinking_time, p2_threads, true));
                     }
                 }
             }
@@ -336,6 +415,125 @@ pub fn play_game(player_one: bool, player_two: bool, p1_settings: Option<(f32, i
     println!("Game Over.")
 }
 
+
+pub fn test_game(p1_time: f32, p2_time: f32, p1_threads: i32, p2_threads: i32, mut games: i32, switch: bool){
+
+    let mut i = 0;
+
+    let mut p1_first = 0;
+    let mut p1_first_length = 0.0;
+
+    let mut p1_second = 0;
+    let mut p1_second_length = 0.0;
+
+    let mut p1_draw = 0;
+    let mut p1_draw_length = 0.0;
+
+    let mut p2_first = 0;
+    let mut p2_first_length = 0.0;
+
+    let mut p2_second = 0;
+    let mut p2_second_length = 0.0;
+
+    let mut p2_draw = 0;
+    let mut p2_draw_length = 0.0;
+
+
+    while games > 0 {
+
+        let mut g: Connect4 = UCTGame::build_game();
+        let mut moves = 0;
+
+        while g.get_result().is_none() {
+
+            if i % 2 == 0 {
+                g.make_move(uct(g.replicate(), p1_time, p1_threads, false));
+            } else {
+                g.make_move(uct(g.replicate(), p2_time, p2_threads, false));
+            }
+            moves += 1;
+            if g.get_result().is_none() {
+                if i % 2 == 0 {
+                    g.make_move(uct(g.replicate(), p2_time, p2_threads, false));
+                } else {
+                    g.make_move(uct(g.replicate(), p1_time, p1_threads, false));
+                }
+                moves += 1;
+            }
+        }
+
+
+        if i % 2 == 0 {
+            if g.get_result().unwrap().0 > 0.0 {
+                p1_first += 1;
+                p1_first_length += (moves as f32);
+            } else if g.get_result().unwrap().0 < 0.0 {
+                p2_second += 1;
+                p2_second_length += (moves as f32);
+            } else {
+                p1_draw += 1;
+                p1_draw_length += (moves as f32);
+            }
+        } else {
+            if g.get_result().unwrap().0 > 0.0 {
+                p2_first += 1;
+                p2_first_length += (moves as f32);
+            } else if g.get_result().unwrap().0 < 0.0 {
+                p1_second += 1;
+                p1_second_length += (moves as f32);
+            } else {
+                p2_draw += 1;
+                p2_draw_length += (moves as f32);
+            }
+        }
+
+        games -= 1;
+        i += 1;
+    }
+
+    p1_first_length /= (p1_first as f32);
+    p2_first_length /= (p2_first as f32);
+
+    p1_second_length /= (p1_second as f32);
+    p2_second_length /= (p2_second as f32);
+
+    p1_draw_length /= (p1_draw as f32);
+    p2_draw_length /= (p2_draw as f32);
+
+
+    println!("{:-<100}{}",">","<");
+    println!("Results: ");
+    println!("{:-<100}{}",">","<");
+
+    println!("Total Games: {: <4}",
+             games,
+    );
+    println!("P1 FIRST := wins = {: <4} - losses = {: <4} - draws = {: <4}",
+             p1_first,
+            p2_second,
+            p1_draw
+    );
+    println!("av moves := wins = {: <4} - losses = {: <4} - draws = {: <4}",
+             p1_first_length,
+             p2_second_length,
+             p1_draw_length
+    );
+    println!("{:-<100}{}",">","<");
+    println!("P2 FIRST := wins = {: <4} - losses = {: <4} - draws = {: <4}",
+             p2_first,
+             p1_second,
+             p2_draw
+    );
+    println!("av moves := wins = {: <4} - losses = {: <4} - draws = {: <4}",
+             p2_first_length,
+             p1_second_length,
+             p2_draw_length
+    );
+
+    println!("{:-<100}{}",">","<");
+
+
+}
 /*
 //thread::sleep(Duration::from_millis(4000));
 
