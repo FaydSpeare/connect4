@@ -18,13 +18,11 @@ use uct::node::*;
 
 #[allow(unused_imports)]
 use game::generation::*;
-//use std::env;
 
 const COMMANDS: [&str; 4] = ["move", "undo", "analyse", "engine"];
-const MODES: [&str; 2] = ["analysis", "play"];
+const MODES: [&str; 3] = ["analysis", "play", "test"];
 
 fn main() {
-    //let args: Vec<String> = env::args().collect();
 
     #[allow(unused_assignments)]
     let mut commands = false;
@@ -210,7 +208,6 @@ fn main() {
                     }
 
                     test_game(p1_time, p2_time, p1_threads, p2_threads, games, switch);
-
 
                 } else {
                     println!("Invalid Mode - Modes: {:?}", MODES);
@@ -531,30 +528,7 @@ pub fn test_game(p1_time: f32, p2_time: f32, p1_threads: i32, p2_threads: i32, m
     );
 
     println!("{:-<100}{}",">","<");
-
-
 }
-/*
-//thread::sleep(Duration::from_millis(4000));
-
-use std::collections::HashMap;
-
-pub fn hashing(){
-
-    let mut g1 = Game::build_game();
-    let mut g2 = Game::build_game();
-    g2.make_rand_move();
-    g1 = g2.replicate();
-
-    let mut x: HashMap<Game, i32> = HashMap::new();
-
-    x.insert(g1, 0);
-
-
-    println!("{}", x.get(&g2).unwrap());
-}
-*/
-
 
 
 
